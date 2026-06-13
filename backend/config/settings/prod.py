@@ -3,6 +3,7 @@ from decouple import config as env
 
 DEBUG = False
 ALLOWED_HOSTS = env("ALLOWED_HOSTS", default="").split(",")
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS", default="").split(",")
 
 # Security headers — Cloudflare handles TLS, but enforce at app layer too
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
