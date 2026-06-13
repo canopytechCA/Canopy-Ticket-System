@@ -1,7 +1,7 @@
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.urls import path
 from . import views
+from apps.accounts import views as account_views
 
 app_name = "tickets"
 
@@ -24,4 +24,7 @@ urlpatterns = [
     path("tech/companies/", views.TechCompanyList.as_view(), name="tech_company_list"),
     path("tech/companies/new/", views.TechCompanyCreate.as_view(), name="tech_company_create"),
     path("tech/companies/<int:pk>/", views.TechCompanyDetail.as_view(), name="tech_company_detail"),
+    path("tech/users/", account_views.TechUserList.as_view(), name="tech_user_list"),
+    path("tech/users/new/", account_views.TechUserCreate.as_view(), name="tech_user_create"),
+    path("tech/users/<int:pk>/", account_views.TechUserDetail.as_view(), name="tech_user_detail"),
 ]
