@@ -1,0 +1,29 @@
+<div class="{% if message.author.is_tech %}bg-blue-50 border-l-4 border-blue-400{% else %}bg-white border border-gray-200{% endif %} rounded-lg p-4">
+  <div class="flex items-center justify-between mb-2">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 {% if message.author.is_tech %}bg-blue-500{% else %}bg-gray-300{% endif %} rounded-full flex items-center justify-center text-xs font-bold {% if message.author.is_tech %}text-white{% else %}text-gray-700{% endif %}">
+        {{ message.author.first_name.0 }}{{ message.author.last_name.0 }}
+      </div>
+      <span class="text-sm font-medium text-gray-800">
+        {% if message.author.is_tech %}Canopy Support{% else %}{{ message.author.get_full_name }}{% endif %}
+      </span>
+    </div>
+    <span class="text-xs text-gray-400">{{ message.created_at|date:"M j, Y g:i A" }}</span>
+  </div>
+  <div class="text-sm text-gray-700 whitespace-pre-wrap pl-9">{{ message.body }}</div>
+  {% with attachments=message.attachments.all %}
+  {% if attachments %}
+  <div class="pl-9 mt-3 flex flex-wrap gap-2">
+    {% for att in attachments %}
+    <a href="{{ att.file.url }}" target="_blank" rel="noopener"
+       class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs text-gray-700 font-medium">
+      <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+      </svg>
+      {{ att.filename }}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+</div>

@@ -1,0 +1,62 @@
+{% extends "tech/base_tech.html" %}
+
+{% block title %}Companies — Canopy Tickets{% endblock %}
+
+{% block content %}
+<div class="p-6">
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-xl font-bold text-gray-900">Companies</h1>
+    <a href="{% url 'tickets:tech_company_create' %}"
+       class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+      + New Company
+    </a>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Company</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Website</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Open Tickets</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Total Tickets</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for company in companies %}
+        <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='{% url 'tickets:tech_company_detail' company.pk %}'">
+          <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ company.name }}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">{{ company.phone|default:"—" }}</td>
+          <td class="px-4 py-3 text-sm text-blue-600">
+            {% if company.website %}
+            <a href="{{ company.website }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">{{ company.website }}</a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="px-4 py-3 text-sm">
+            <span class="{% if company.open_count > 0 %}font-semibold text-blue-600{% else %}text-gray-400{% endif %}">
+              {{ company.open_count }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-600">{{ company.ticket_count }}</td>
+          <td class="px-4 py-3">
+            {% if company.is_active %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>
+            {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Inactive</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-4 py-12 text-center text-gray-400 text-sm">No companies yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

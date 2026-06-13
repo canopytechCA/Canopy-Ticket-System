@@ -1,0 +1,217 @@
+{% extends "tech/base_tech.html" %}
+
+{% block title %}Reports — Canopy Tickets{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-7xl mx-auto">
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-xl font-bold text-gray-900">Reports &amp; Analytics</h1>
+    <div class="flex items-center gap-3">
+      <select id="export-company" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+        <option value="">All Companies</option>
+        {% for c in companies %}
+        <option value="{{ c.id }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      <a id="export-link" href="{% url 'tickets:tech_time_export' %}"
+         class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">
+        Export Time CSV
+      </a>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="grid grid-cols-4 gap-4 mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Tickets This Month</p>
+      <p class="text-3xl font-bold text-blue-600 mt-2">{{ total_this_month }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Currently Open</p>
+      <p class="text-3xl font-bold text-gray-900 mt-2">{{ open_total }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Avg Resolution (30d)</p>
+      <p class="text-3xl font-bold text-green-600 mt-2">{{ avg_resolution }}</p>
+    </div>
+    <div class="bg-white rounded-xl border {% if breached_total %}border-red-300{% else %}border-gray-200{% endif %} p-5">
+      <p class="text-xs font-medium {% if breached_total %}text-red-600{% else %}text-gray-500{% endif %} uppercase tracking-wide">SLA Compliance (30d)</p>
+      <p class="text-3xl font-bold {% if breached_total %}text-red-600{% else %}text-green-600{% endif %} mt-2">{{ sla_compliance }}</p>
+    </div>
+  </div>
+
+  <!-- Charts row 1 -->
+  <div class="grid grid-cols-3 gap-6 mb-6">
+
+    <!-- Tickets per day -->
+    <div class="col-span-2 bg-white rounded-xl border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-700 mb-4">Tickets Created — Last 30 Days</h2>
+      <canvas id="chartDaily" height="100"></canvas>
+    </div>
+
+    <!-- By status -->
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-700 mb-4">By Status</h2>
+      <canvas id="chartStatus" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts row 2 -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+
+    <!-- By company -->
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-700 mb-4">Tickets by Company (All Time)</h2>
+      <canvas id="chartCompany" height="160"></canvas>
+    </div>
+
+    <!-- Tech workload -->
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-700 mb-4">Tech Workload</h2>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-gray-400 text-xs border-b">
+            <th class="text-left pb-2">Technician</th>
+            <th class="text-right pb-2">Open</th>
+            <th class="text-right pb-2">All Time</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for tech in tech_workload %}
+          <tr>
+            <td class="py-2 font-medium text-gray-800">{{ tech.assigned_to__first_name }} {{ tech.assigned_to__last_name }}</td>
+            <td class="py-2 text-right">
+              <span class="{% if tech.open_count > 10 %}text-red-600 font-bold{% elif tech.open_count > 5 %}text-orange-600{% else %}text-gray-700{% endif %}">
+                {{ tech.open_count }}
+              </span>
+            </td>
+            <td class="py-2 text-right text-gray-500">{{ tech.total }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="py-4 text-center text-gray-400">No assigned tickets yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLA breaches table -->
+  {% if recent_breaches %}
+  <div class="bg-white rounded-xl border border-red-200 p-5">
+    <h2 class="text-sm font-semibold text-red-700 mb-4">&#9888; Active SLA Breaches</h2>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-gray-400 text-xs border-b">
+          <th class="text-left pb-2">Ticket</th>
+          <th class="text-left pb-2">Subject</th>
+          <th class="text-left pb-2">Company</th>
+          <th class="text-left pb-2">Priority</th>
+          <th class="text-left pb-2">Deadline</th>
+          <th class="text-left pb-2">Assigned</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for ticket in recent_breaches %}
+        <tr class="hover:bg-red-50 cursor-pointer" onclick="window.location='{% url 'tickets:tech_ticket_detail' ticket.pk %}'">
+          <td class="py-2 font-mono text-gray-600">{{ ticket.ticket_number }}</td>
+          <td class="py-2 text-gray-900 max-w-xs truncate">{{ ticket.subject }}</td>
+          <td class="py-2 text-gray-600">{{ ticket.company.name }}</td>
+          <td class="py-2">{% include "tech/partials/priority_badge.html" with ticket=ticket %}</td>
+          <td class="py-2 text-red-600 font-medium">{{ ticket.sla_resolve_display }}</td>
+          <td class="py-2 text-gray-500">{{ ticket.assigned_to.get_full_name|default:"Unassigned" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+const BLUE   = "rgba(59,130,246,0.8)";
+const GREEN  = "rgba(34,197,94,0.8)";
+const YELLOW = "rgba(234,179,8,0.8)";
+const PURPLE = "rgba(168,85,247,0.8)";
+const GRAY   = "rgba(156,163,175,0.8)";
+const RED    = "rgba(239,68,68,0.8)";
+const STATUS_COLORS = [BLUE, YELLOW, PURPLE, GREEN, GRAY, RED];
+
+// Daily line chart
+new Chart(document.getElementById("chartDaily"), {
+  type: "line",
+  data: {
+    labels: {{ chart_daily_labels|safe }},
+    datasets: [{
+      label: "Tickets",
+      data: {{ chart_daily_data|safe }},
+      borderColor: "rgb(59,130,246)",
+      backgroundColor: "rgba(59,130,246,0.1)",
+      tension: 0.3,
+      fill: true,
+      pointRadius: 3,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1 } },
+      x: { ticks: { maxTicksLimit: 10 } }
+    }
+  }
+});
+
+// Status doughnut
+new Chart(document.getElementById("chartStatus"), {
+  type: "doughnut",
+  data: {
+    labels: {{ chart_status_labels|safe }},
+    datasets: [{
+      data: {{ chart_status_data|safe }},
+      backgroundColor: STATUS_COLORS,
+      borderWidth: 2,
+      borderColor: "#fff",
+    }]
+  },
+  options: {
+    plugins: { legend: { position: "bottom", labels: { padding: 12, font: { size: 11 } } } },
+    cutout: "60%",
+  }
+});
+
+// Company bar
+new Chart(document.getElementById("chartCompany"), {
+  type: "bar",
+  data: {
+    labels: {{ chart_company_labels|safe }},
+    datasets: [{
+      label: "Tickets",
+      data: {{ chart_company_data|safe }},
+      backgroundColor: BLUE,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1 } },
+      x: { ticks: { font: { size: 11 } } }
+    }
+  }
+});
+</script>
+
+<script>
+const exportCompany = document.getElementById('export-company');
+const exportLink = document.getElementById('export-link');
+const baseExportUrl = "{% url 'tickets:tech_time_export' %}";
+exportCompany.addEventListener('change', () => {
+  exportLink.href = exportCompany.value ? baseExportUrl + '?company=' + exportCompany.value : baseExportUrl;
+});
+</script>
+{% endblock %}

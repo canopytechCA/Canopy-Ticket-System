@@ -1,0 +1,48 @@
+{% extends "portal/base_portal.html" %}
+
+{% block title %}Open a Ticket — Canopy Support{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <a href="{% url 'portal:dashboard' %}" class="text-sm text-blue-600 hover:underline">&larr; Back to my tickets</a>
+  <h1 class="text-2xl font-bold text-gray-900 mt-2 mb-2">Open a Support Ticket</h1>
+  <p class="text-sm text-gray-500 mb-6">Describe your issue and our team will respond as soon as possible.</p>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <form method="post">
+      {% csrf_token %}
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Subject <span class="text-red-500">*</span></label>
+          {{ form.subject }}
+          <p class="text-xs text-gray-400 mt-1">Brief summary — e.g. "Cannot connect to printer on 2nd floor"</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Description <span class="text-red-500">*</span></label>
+          {{ form.description }}
+          <p class="text-xs text-gray-400 mt-1">Include any error messages, what you tried, and when it started.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          {{ form.priority }}
+        </div>
+      </div>
+      {% if form.errors %}
+      <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        {% for field, errors in form.errors.items %}
+          {% for error in errors %}<p>{{ error }}</p>{% endfor %}
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="flex gap-3 mt-6">
+        <button type="submit" class="px-5 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">
+          Submit Ticket
+        </button>
+        <a href="{% url 'portal:dashboard' %}" class="px-5 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "portal/base_portal.html" %}
+
+{% block title %}My Tickets — Canopy Support{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Support Tickets</h1>
+  <a href="{% url 'portal:ticket_create' %}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+    + Open New Ticket
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-2 gap-4 mb-8">
+  <div class="bg-white rounded-xl border border-gray-200 p-5">
+    <p class="text-sm text-gray-500">Active Tickets</p>
+    <p class="text-3xl font-bold text-blue-600 mt-1">{{ open_count }}</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-200 p-5">
+    <p class="text-sm text-gray-500">Resolved</p>
+    <p class="text-3xl font-bold text-green-600 mt-1">{{ resolved_count }}</p>
+  </div>
+</div>
+
+<!-- Ticket list -->
+<div class="space-y-3">
+  {% for ticket in tickets %}
+  <a href="{% url 'portal:ticket_detail' ticket.pk %}"
+     class="block bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition-all">
+    <div class="flex items-start justify-between">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs font-mono text-gray-400">{{ ticket.ticket_number }}</span>
+          {% with s=ticket.status %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+            {% if s == 'OPEN' %}bg-blue-100 text-blue-700
+            {% elif s == 'IN_PROGRESS' %}bg-yellow-100 text-yellow-700
+            {% elif s == 'WAITING_CLIENT' %}bg-purple-100 text-purple-700
+            {% elif s == 'RESOLVED' %}bg-green-100 text-green-700
+            {% else %}bg-gray-100 text-gray-600{% endif %}">
+            {{ ticket.get_status_display }}
+          </span>
+          {% endwith %}
+        </div>
+        <p class="text-sm font-medium text-gray-900 truncate">{{ ticket.subject }}</p>
+        <p class="text-xs text-gray-400 mt-1">
+          Opened {{ ticket.created_at|date:"M j, Y" }}
+          {% if ticket.assigned_to %} &middot; Assigned to {{ ticket.assigned_to.get_full_name }}{% endif %}
+        </p>
+      </div>
+      <svg class="w-5 h-5 text-gray-300 flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+    </div>
+  </a>
+  {% empty %}
+  <div class="text-center py-16 bg-white rounded-xl border border-gray-200">
+    <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+    </svg>
+    <p class="text-gray-500 text-sm">You have no support tickets yet.</p>
+    <a href="{% url 'portal:ticket_create' %}" class="inline-block mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+      Open your first ticket
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<div class="flex justify-center gap-2 mt-6">
+  {% if page_obj.has_previous %}
+  <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 text-sm border rounded-lg hover:bg-gray-100">Previous</a>
+  {% endif %}
+  <span class="px-3 py-1 text-sm text-gray-600">Page {{ page_obj.number }} of {{ page_obj.num_pages }}</span>
+  {% if page_obj.has_next %}
+  <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 text-sm border rounded-lg hover:bg-gray-100">Next</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,24 @@
+{% with status=ticket.sla_resolve_status %}
+{% if status %}
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+  {% if status == 'BREACHED' or status == 'MISSED' %}bg-red-100 text-red-700
+  {% elif status == 'WARNING' %}bg-orange-100 text-orange-700
+  {% elif status == 'MET' %}bg-green-100 text-green-700
+  {% else %}bg-gray-100 text-gray-500{% endif %}"
+  {% if status == 'BREACHED' or status == 'WARNING' %}
+  title="{{ ticket.sla_resolve_display }}"
+  {% endif %}>
+  {% if status == 'BREACHED' %}
+    <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>Breached
+  {% elif status == 'WARNING' %}
+    <span class="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></span>{{ ticket.sla_resolve_display }}
+  {% elif status == 'MET' %}
+    &#10003; Met
+  {% elif status == 'MISSED' %}
+    &#10007; Missed
+  {% else %}
+    {{ ticket.sla_resolve_display }}
+  {% endif %}
+</span>
+{% endif %}
+{% endwith %}

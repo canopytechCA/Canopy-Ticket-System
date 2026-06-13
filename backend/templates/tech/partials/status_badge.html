@@ -1,0 +1,10 @@
+{% with s=ticket.status %}
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+  {% if s == 'OPEN' %}bg-blue-100 text-blue-700
+  {% elif s == 'IN_PROGRESS' %}bg-yellow-100 text-yellow-700
+  {% elif s == 'WAITING_CLIENT' %}bg-purple-100 text-purple-700
+  {% elif s == 'RESOLVED' %}bg-green-100 text-green-700
+  {% else %}bg-gray-100 text-gray-600{% endif %}">
+  {{ ticket.get_status_display }}
+</span>
+{% endwith %}

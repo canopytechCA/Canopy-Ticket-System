@@ -1,0 +1,80 @@
+{% extends "portal/base_portal.html" %}
+
+{% block title %}{{ ticket.ticket_number }} — Canopy Support{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+
+  <a href="{% url 'portal:dashboard' %}" class="text-sm text-blue-600 hover:underline">&larr; Back to my tickets</a>
+
+  <!-- Header -->
+  <div class="mt-2 mb-6">
+    <div class="flex items-center gap-2 mb-1">
+      <span class="text-xs font-mono text-gray-400">{{ ticket.ticket_number }}</span>
+      {% with s=ticket.status %}
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+        {% if s == 'OPEN' %}bg-blue-100 text-blue-700
+        {% elif s == 'IN_PROGRESS' %}bg-yellow-100 text-yellow-700
+        {% elif s == 'WAITING_CLIENT' %}bg-purple-100 text-purple-700
+        {% elif s == 'RESOLVED' %}bg-green-100 text-green-700
+        {% else %}bg-gray-100 text-gray-600{% endif %}">
+        {{ ticket.get_status_display }}
+      </span>
+      {% endwith %}
+      {% with p=ticket.priority %}
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+        {% if p == 'CRITICAL' %}bg-red-100 text-red-700
+        {% elif p == 'HIGH' %}bg-orange-100 text-orange-700
+        {% elif p == 'MEDIUM' %}bg-blue-100 text-blue-700
+        {% else %}bg-gray-100 text-gray-600{% endif %}">
+        {{ ticket.get_priority_display }}
+      </span>
+      {% endwith %}
+    </div>
+    <h1 class="text-xl font-bold text-gray-900">{{ ticket.subject }}</h1>
+    <p class="text-sm text-gray-500 mt-1">
+      Opened {{ ticket.created_at|date:"M j, Y" }}
+      {% if ticket.assigned_to %} &middot; Assigned to {{ ticket.assigned_to.get_full_name }}{% endif %}
+    </p>
+  </div>
+
+  <!-- Thread -->
+  <div id="message-thread" class="space-y-3 mb-6">
+    {% for message in public_messages %}
+      {% include "portal/partials/message.html" with message=message %}
+    {% endfor %}
+  </div>
+
+  <!-- Reply -->
+  {% if ticket.is_open %}
+  <div class="bg-white rounded-xl border border-gray-200 p-4">
+    <h3 class="text-sm font-semibold text-gray-700 mb-3">Add a Reply</h3>
+    <form method="post"
+          enctype="multipart/form-data"
+          hx-post="{% url 'portal:ticket_detail' ticket.pk %}"
+          hx-target="#message-thread"
+          hx-swap="beforeend"
+          hx-encoding="multipart/form-data"
+          hx-on::after-request="this.reset()">
+      {% csrf_token %}
+      {{ message_form.body }}
+      <div class="mt-2">
+        <label class="block text-xs text-gray-500 mb-1">Attachments (optional, max 10 MB each)</label>
+        <input type="file" name="attachments" multiple
+               class="block w-full text-xs text-gray-600 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+      </div>
+      <div class="flex justify-end mt-3">
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+          Send Reply
+        </button>
+      </div>
+    </form>
+  </div>
+  {% else %}
+  <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-sm text-gray-500">
+    This ticket is {{ ticket.get_status_display|lower }}. If you need further assistance, please open a new ticket.
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

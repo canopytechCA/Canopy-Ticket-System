@@ -1,0 +1,55 @@
+{% extends "tech/base_tech.html" %}
+
+{% block title %}New Company — Canopy Tickets{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-lg mx-auto">
+
+  <a href="{% url 'tickets:tech_company_list' %}" class="text-sm text-blue-600 hover:underline">&larr; Back to companies</a>
+
+  <h1 class="text-xl font-bold text-gray-900 mt-2 mb-6">New Company</h1>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <form method="post">
+      {% csrf_token %}
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+          {{ form.name }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          {{ form.phone }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Website</label>
+          {{ form.website }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          {{ form.notes }}
+        </div>
+        <div class="flex items-center gap-2">
+          {{ form.is_active }}
+          <label class="text-sm text-gray-700">Active</label>
+        </div>
+      </div>
+      {% if form.errors %}
+      <div class="mt-4 text-sm text-red-600">
+        {% for field in form %}{% for error in field.errors %}<p>{{ field.label }}: {{ error }}</p>{% endfor %}{% endfor %}
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+      </div>
+      {% endif %}
+      <div class="flex gap-3 mt-6">
+        <button type="submit" class="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+          Create Company
+        </button>
+        <a href="{% url 'tickets:tech_company_list' %}" class="px-6 py-2 border border-gray-300 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
