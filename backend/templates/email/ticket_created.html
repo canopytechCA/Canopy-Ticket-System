@@ -1,0 +1,47 @@
+{% extends "email/base_email.html" %}
+{% block body %}
+<p style="margin:0 0 8px;color:#374151;font-size:15px;">Hi {{ recipient_name }},</p>
+<p style="margin:0 0 24px;color:#374151;font-size:15px;">A new support ticket has been submitted and requires attention.</p>
+
+<!-- Ticket card -->
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:24px;">
+  <tr>
+    <td style="padding:20px 24px;">
+      <p style="margin:0 0 4px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Ticket</p>
+      <p style="margin:0 0 16px;color:#1e293b;font-size:13px;font-family:monospace;">{{ ticket.ticket_number }}</p>
+
+      <p style="margin:0 0 4px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Subject</p>
+      <p style="margin:0 0 16px;color:#1e293b;font-size:15px;font-weight:600;">{{ ticket.subject }}</p>
+
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="50%" style="padding-right:12px;">
+            <p style="margin:0 0 4px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Company</p>
+            <p style="margin:0;color:#374151;font-size:14px;">{{ ticket.company.name }}</p>
+          </td>
+          <td width="50%">
+            <p style="margin:0 0 4px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Priority</p>
+            <p style="margin:0;color:#374151;font-size:14px;">{{ ticket.get_priority_display }}</p>
+          </td>
+        </tr>
+      </table>
+
+      {% if ticket.description %}
+      <hr style="border:0;border-top:1px solid #e2e8f0;margin:16px 0;">
+      <p style="margin:0 0 4px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Description</p>
+      <p style="margin:0;color:#374151;font-size:14px;line-height:1.6;white-space:pre-wrap;">{{ ticket.description|truncatechars:500 }}</p>
+      {% endif %}
+    </td>
+  </tr>
+</table>
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <a href="{{ ticket_url }}" style="display:inline-block;background-color:#1e40af;color:#ffffff;font-size:14px;font-weight:600;padding:12px 24px;border-radius:6px;text-decoration:none;">
+        View Ticket →
+      </a>
+    </td>
+  </tr>
+</table>
+{% endblock %}

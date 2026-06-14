@@ -98,5 +98,13 @@ CSRF_COOKIE_HTTPONLY = True
 
 SUPPORT_EMAIL = config("SUPPORT_EMAIL", default="support@canopytechresources.ca")
 
+# Public URL used in email links (no trailing slash)
+SITE_URL = config("SITE_URL", default="https://support.canopytech.ca")
+
+# Microsoft Graph API (for sending email via Office 365)
+GRAPH_CLIENT_ID = config("GRAPH_CLIENT_ID", default="")
+GRAPH_CLIENT_SECRET = config("GRAPH_CLIENT_SECRET", default="")
+GRAPH_TENANT_ID = config("GRAPH_TENANT_ID", default="")
+
 # API key for service-to-service ticket creation (e.g. Chat Agent)
 CANOPY_API_KEY = config("CANOPY_API_KEY", default="")

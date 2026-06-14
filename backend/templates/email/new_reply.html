@@ -1,0 +1,30 @@
+{% extends "email/base_email.html" %}
+{% block body %}
+<p style="margin:0 0 8px;color:#374151;font-size:15px;">Hi {{ recipient_name }},</p>
+<p style="margin:0 0 24px;color:#374151;font-size:15px;">
+  <strong>{{ replied_by }}</strong> has added a reply to ticket
+  <span style="font-family:monospace;font-size:13px;color:#6b7280;">{{ ticket.ticket_number }}</span>.
+</p>
+
+<!-- Ticket info -->
+<p style="margin:0 0 6px;color:#6b7280;font-size:13px;font-weight:600;">{{ ticket.subject }}</p>
+
+<!-- Message preview -->
+<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+  <tr>
+    <td style="border-left:3px solid #1e40af;padding:12px 16px;background-color:#f8fafc;border-radius:0 6px 6px 0;">
+      <p style="margin:0;color:#374151;font-size:14px;line-height:1.6;white-space:pre-wrap;">{{ message.body|truncatechars:600 }}</p>
+    </td>
+  </tr>
+</table>
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <a href="{{ ticket_url }}" style="display:inline-block;background-color:#1e40af;color:#ffffff;font-size:14px;font-weight:600;padding:12px 24px;border-radius:6px;text-decoration:none;">
+        View &amp; Reply →
+      </a>
+    </td>
+  </tr>
+</table>
+{% endblock %}
