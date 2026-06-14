@@ -91,10 +91,20 @@ class TicketStatusForm(forms.ModelForm):
 class CompanyForm(forms.ModelForm):
     class Meta:
         model = Company
-        fields = ["name", "phone", "website", "notes", "is_active"]
+        fields = ["name", "email_domain", "phone", "website", "notes", "is_active"]
         widgets = {
             "name": forms.TextInput(attrs={"class": INPUT_CLASS}),
+            "email_domain": forms.TextInput(attrs={
+                "class": INPUT_CLASS,
+                "placeholder": "acme.com",
+            }),
             "phone": forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "+1 (780) 555-0100"}),
             "website": forms.URLInput(attrs={"class": INPUT_CLASS, "placeholder": "https://"}),
             "notes": forms.Textarea(attrs={"class": TEXTAREA_CLASS, "rows": 3}),
         }
+
+    def clean_email_domain(self):
+        domain = (self.cleaned_data.get("email_domain") or "").strip().lower()
+        if domain.startswith("@"):
+            domain = domain[1:]
+        return domain or None

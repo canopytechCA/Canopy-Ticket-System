@@ -18,6 +18,14 @@
           {{ form.name }}
         </div>
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Microsoft SSO Domain
+            <span class="text-gray-400 font-normal text-xs">— e.g. acme.com</span>
+          </label>
+          {{ form.email_domain }}
+          <p class="text-xs text-gray-400 mt-1">Users signing in with Microsoft from this domain get a client account auto-created.</p>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
           {{ form.phone }}
         </div>

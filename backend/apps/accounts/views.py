@@ -255,6 +255,52 @@ class ProfileView(LoginRequiredMixin, View):
 
 # ── Microsoft 365 SSO ─────────────────────────────────────────────────────────
 
+def _auto_create_from_domain(request, email: str, info: dict):
+    """
+    Look up a Company by the email domain and auto-create a CLIENT user.
+    Returns the new User on success, or None (with a flash error) on failure.
+    """
+    from apps.companies.models import Company
+
+    domain = email.split("@")[1] if "@" in email else ""
+    if not domain:
+        django_messages.error(request, f"No active account found for {email}. Contact your administrator.")
+        return None
+
+    try:
+        company = Company.objects.get(email_domain__iexact=domain, is_active=True)
+    except Company.DoesNotExist:
+        django_messages.error(
+            request,
+            f"No active account found for {email}. Contact your administrator to get access.",
+        )
+        return None
+
+    # Parse name — fall back to splitting display_name if Graph didn't return separate fields
+    first_name = info.get("first_name", "").strip()
+    last_name = info.get("last_name", "").strip()
+    if not first_name and not last_name:
+        parts = info.get("display_name", "").strip().split(" ", 1)
+        first_name = parts[0] if parts else ""
+        last_name = parts[1] if len(parts) > 1 else ""
+
+    user = User.objects.create_user(
+        email=email,
+        password=None,          # set_unusable_password — SSO only
+        first_name=first_name,
+        last_name=last_name or first_name,
+        role=User.Role.CLIENT,
+        company=company,
+    )
+
+    log_action(
+        request, AuditLog.Action.USER_CREATE, target=email,
+        detail=f"auto-created via Microsoft SSO for {company.name}",
+    )
+    logger.info("Auto-created client account for %s (company: %s)", email, company.name)
+    return user
+
+
 class MicrosoftLoginView(View):
     """Redirect the user to Microsoft's OAuth2 authorization endpoint."""
 
@@ -298,12 +344,9 @@ class MicrosoftCallbackView(View):
         try:
             user = User.objects.get(email__iexact=email, is_active=True)
         except User.DoesNotExist:
-            django_messages.error(
-                request,
-                f"No active account found for {email}. "
-                "Contact your administrator to get access.",
-            )
-            return redirect("accounts:login")
+            user = _auto_create_from_domain(request, email, info)
+            if user is None:
+                return redirect("accounts:login")
 
         auth_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
         log_action(request, AuditLog.Action.LOGIN, target=user.email, detail="Microsoft SSO")

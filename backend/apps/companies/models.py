@@ -5,6 +5,13 @@ from django.utils.text import slugify
 class Company(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
+    email_domain = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text="e.g. acme.com — users signing in via Microsoft with this domain get a client account auto-created",
+    )
     phone = models.CharField(max_length=30, blank=True)
     website = models.URLField(blank=True)
     notes = models.TextField(blank=True)
