@@ -31,6 +31,30 @@ def _validate_file_type(value):
         )
 
 
+class Category(models.Model):
+    COLORS = [
+        ("#3b82f6", "Blue"),
+        ("#8b5cf6", "Purple"),
+        ("#f97316", "Orange"),
+        ("#ef4444", "Red"),
+        ("#22c55e", "Green"),
+        ("#eab308", "Yellow"),
+        ("#6b7280", "Gray"),
+        ("#ec4899", "Pink"),
+    ]
+
+    name = models.CharField(max_length=100, unique=True)
+    color = models.CharField(max_length=7, default="#6b7280", choices=COLORS)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "categories"
+
+    def __str__(self):
+        return self.name
+
+
 class Ticket(models.Model):
     class Status(models.TextChoices):
         OPEN = "OPEN", "Open"
@@ -46,6 +70,13 @@ class Ticket(models.Model):
         CRITICAL = "CRITICAL", "Critical"
 
     ticket_number = models.CharField(max_length=20, unique=True, editable=False)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tickets",
+    )
     company = models.ForeignKey(
         "companies.Company", on_delete=models.PROTECT, related_name="tickets"
     )

@@ -1,0 +1,8 @@
+{% if ticket.category %}
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
+      style="background-color: {{ ticket.category.color }};">
+  {{ ticket.category.name }}
+</span>
+{% else %}
+<span class="text-gray-400 text-xs">—</span>
+{% endif %}

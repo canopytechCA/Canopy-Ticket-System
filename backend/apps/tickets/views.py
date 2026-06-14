@@ -12,9 +12,9 @@ from django.views.generic import ListView, CreateView, TemplateView, View
 
 from apps.accounts.models import User, AuditLog, log_action
 from apps.companies.models import Company
-from .forms import TicketForm, MessageForm, TimeEntryForm, TicketStatusForm, CompanyForm
+from .forms import TicketForm, MessageForm, TimeEntryForm, TicketStatusForm, CompanyForm, CategoryForm
 from .mixins import TechRequiredMixin
-from .models import Ticket, Message, TimeEntry, Attachment
+from .models import Ticket, Message, TimeEntry, Attachment, Category
 from .notifications import notify_new_reply, notify_ticket_assigned, notify_status_changed, notify_ticket_created
 
 
@@ -26,11 +26,12 @@ class TechDashboard(TechRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        qs = Ticket.objects.select_related("company", "assigned_to", "created_by")
+        qs = Ticket.objects.select_related("company", "assigned_to", "created_by", "category")
         status = self.request.GET.get("status")
         company = self.request.GET.get("company")
         assignee = self.request.GET.get("assignee")
         priority = self.request.GET.get("priority")
+        category = self.request.GET.get("category")
         q = self.request.GET.get("q")
 
         if status:
@@ -43,6 +44,8 @@ class TechDashboard(TechRequiredMixin, ListView):
             qs = qs.filter(assigned_to__isnull=True)
         if priority:
             qs = qs.filter(priority=priority)
+        if category:
+            qs = qs.filter(category_id=category)
         if q:
             qs = qs.filter(Q(subject__icontains=q) | Q(ticket_number__icontains=q))
 
@@ -52,6 +55,7 @@ class TechDashboard(TechRequiredMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         ctx["companies"] = Company.objects.filter(is_active=True)
         ctx["techs"] = User.objects.filter(role=User.Role.TECH, is_active=True)
+        ctx["categories"] = Category.objects.filter(is_active=True)
         ctx["status_choices"] = Ticket.Status.choices
         ctx["priority_choices"] = Ticket.Priority.choices
         ctx["open_count"] = Ticket.objects.filter(status=Ticket.Status.OPEN).count()
@@ -310,6 +314,21 @@ class TechReports(TechRequiredMixin, TemplateView):
         )
 
         ctx["companies"] = Company.objects.filter(is_active=True).order_by("name")
+
+        # ── Tickets by category ──
+        by_category = (
+            all_tickets.values("category__name", "category__color")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
+        ctx["chart_category_labels"] = json.dumps(
+            [r["category__name"] or "Uncategorized" for r in by_category]
+        )
+        ctx["chart_category_data"] = json.dumps([r["count"] for r in by_category])
+        ctx["chart_category_colors"] = json.dumps(
+            [r["category__color"] or "#6b7280" for r in by_category]
+        )
+
         return ctx
 
 
@@ -438,3 +457,43 @@ class TechCompanyCreate(TechRequiredMixin, View):
             messages.success(request, f"{company.name} created.")
             return redirect("tickets:tech_company_detail", pk=company.pk)
         return render(request, self.template_name, {"form": form})
+
+
+# ── Category management ───────────────────────────────────────────────────────
+
+class TechCategoryList(TechRequiredMixin, View):
+    template_name = "tech/category_list.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {
+            "categories": Category.objects.annotate(ticket_count=Count("tickets")).order_by("name"),
+            "form": CategoryForm(),
+        })
+
+    def post(self, request):
+        form = CategoryForm(request.POST)
+        if form.is_valid():
+            cat = form.save()
+            messages.success(request, f"Category '{cat.name}' created.")
+            return redirect("tickets:tech_category_list")
+        return render(request, self.template_name, {
+            "categories": Category.objects.annotate(ticket_count=Count("tickets")).order_by("name"),
+            "form": form,
+        })
+
+
+class TechCategoryDetail(TechRequiredMixin, View):
+    template_name = "tech/category_detail.html"
+
+    def get(self, request, pk):
+        cat = get_object_or_404(Category, pk=pk)
+        return render(request, self.template_name, {"cat": cat, "form": CategoryForm(instance=cat)})
+
+    def post(self, request, pk):
+        cat = get_object_or_404(Category, pk=pk)
+        form = CategoryForm(request.POST, instance=cat)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Category updated.")
+            return redirect("tickets:tech_category_list")
+        return render(request, self.template_name, {"cat": cat, "form": form})

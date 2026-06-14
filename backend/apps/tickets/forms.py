@@ -1,6 +1,6 @@
 from django import forms
 from apps.companies.models import Company
-from .models import Ticket, Message, TimeEntry
+from .models import Category, Ticket, Message, TimeEntry
 
 
 INPUT_CLASS = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -11,9 +11,10 @@ TEXTAREA_CLASS = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-
 class TicketForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ["company", "subject", "description", "priority", "assigned_to"]
+        fields = ["company", "category", "subject", "description", "priority", "assigned_to"]
         widgets = {
             "company": forms.Select(attrs={"class": SELECT_CLASS}),
+            "category": forms.Select(attrs={"class": SELECT_CLASS}),
             "subject": forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Brief summary of the issue"}),
             "description": forms.Textarea(attrs={"class": TEXTAREA_CLASS, "rows": 6, "placeholder": "Describe the issue in detail..."}),
             "priority": forms.Select(attrs={"class": SELECT_CLASS}),
@@ -26,6 +27,9 @@ class TicketForm(forms.ModelForm):
         self.fields["assigned_to"].queryset = User.objects.filter(role=User.Role.TECH, is_active=True)
         self.fields["assigned_to"].required = False
         self.fields["assigned_to"].empty_label = "— Unassigned —"
+        self.fields["category"].queryset = Category.objects.filter(is_active=True)
+        self.fields["category"].required = False
+        self.fields["category"].empty_label = "— No category —"
 
 
 class ClientTicketForm(forms.ModelForm):
@@ -73,10 +77,11 @@ class TimeEntryForm(forms.ModelForm):
 class TicketStatusForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ["status", "priority", "assigned_to"]
+        fields = ["status", "priority", "category", "assigned_to"]
         widgets = {
             "status": forms.Select(attrs={"class": SELECT_CLASS}),
             "priority": forms.Select(attrs={"class": SELECT_CLASS}),
+            "category": forms.Select(attrs={"class": SELECT_CLASS}),
             "assigned_to": forms.Select(attrs={"class": SELECT_CLASS}),
         }
 
@@ -86,6 +91,19 @@ class TicketStatusForm(forms.ModelForm):
         self.fields["assigned_to"].queryset = User.objects.filter(role=User.Role.TECH, is_active=True)
         self.fields["assigned_to"].required = False
         self.fields["assigned_to"].empty_label = "— Unassigned —"
+        self.fields["category"].queryset = Category.objects.filter(is_active=True)
+        self.fields["category"].required = False
+        self.fields["category"].empty_label = "— No category —"
+
+
+class CategoryForm(forms.ModelForm):
+    class Meta:
+        model = Category
+        fields = ["name", "color", "is_active"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "e.g. Network & Connectivity"}),
+            "color": forms.Select(attrs={"class": SELECT_CLASS}),
+        }
 
 
 class CompanyForm(forms.ModelForm):

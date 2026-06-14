@@ -21,6 +21,16 @@
             {{ form.priority }}
           </div>
         </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            {{ form.category }}
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
+            {{ form.assigned_to }}
+          </div>
+        </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Subject <span class="text-red-500">*</span></label>
           {{ form.subject }}
@@ -28,10 +38,6 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Description <span class="text-red-500">*</span></label>
           {{ form.description }}
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
-          {{ form.assigned_to }}
         </div>
       </div>
       {% if form.errors %}
