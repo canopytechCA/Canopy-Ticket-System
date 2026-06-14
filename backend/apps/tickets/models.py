@@ -7,10 +7,27 @@ from . import sla as sla_module
 
 _TEN_MB = 10 * 1024 * 1024
 
+_ALLOWED_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv", ".txt",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp",
+    ".zip", ".7z", ".tar", ".gz",
+    ".msg", ".eml",
+    ".log",
+}
+
 
 def _validate_file_size(value):
     if value.size > _TEN_MB:
         raise ValidationError("File size must be 10 MB or less.")
+
+
+def _validate_file_type(value):
+    ext = os.path.splitext(value.name)[1].lower()
+    if ext not in _ALLOWED_EXTENSIONS:
+        raise ValidationError(
+            f"File type '{ext}' is not allowed. "
+            f"Allowed types: {', '.join(sorted(_ALLOWED_EXTENSIONS))}"
+        )
 
 
 class Ticket(models.Model):
@@ -171,7 +188,7 @@ class TimeEntry(models.Model):
 
 class Attachment(models.Model):
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name="attachments")
-    file = models.FileField(upload_to="attachments/%Y/%m/", validators=[_validate_file_size])
+    file = models.FileField(upload_to="attachments/%Y/%m/", validators=[_validate_file_size, _validate_file_type])
     filename = models.CharField(max_length=255)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 

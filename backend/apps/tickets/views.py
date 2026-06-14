@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.generic import ListView, CreateView, TemplateView, View
 
-from apps.accounts.models import User
+from apps.accounts.models import User, AuditLog, log_action
 from apps.companies.models import Company
 from .forms import TicketForm, MessageForm, TimeEntryForm, TicketStatusForm, CompanyForm
 from .mixins import TechRequiredMixin
@@ -119,6 +119,9 @@ class TechTicketDetail(TechRequiredMixin, View):
                     ticket.first_response_at = msg.created_at
                     ticket.save(update_fields=["first_response_at"])
 
+                log_action(request, AuditLog.Action.MESSAGE_ADD, target=ticket.ticket_number,
+                           detail=f"internal={msg.is_internal}")
+
                 if request.htmx:
                     all_attachments = Attachment.objects.filter(
                         message__ticket=ticket
@@ -139,6 +142,8 @@ class TechTicketDetail(TechRequiredMixin, View):
                 entry.ticket = ticket
                 entry.tech = request.user
                 entry.save()
+                log_action(request, AuditLog.Action.TIME_LOG, target=ticket.ticket_number,
+                           detail=f"{entry.minutes}min — {entry.description}")
                 if request.htmx:
                     return render(request, "tech/partials/time_entry.html", {
                         "entry": entry,
@@ -151,7 +156,16 @@ class TechTicketDetail(TechRequiredMixin, View):
         elif action == "status":
             form = TicketStatusForm(request.POST, instance=ticket)
             if form.is_valid():
+                old_status = ticket.status
+                old_assignee = ticket.assigned_to_id
                 form.save()
+                ticket.refresh_from_db()
+                if ticket.status != old_status:
+                    log_action(request, AuditLog.Action.TICKET_STATUS, target=ticket.ticket_number,
+                               detail=f"{old_status} → {ticket.status}")
+                if ticket.assigned_to_id != old_assignee:
+                    log_action(request, AuditLog.Action.TICKET_ASSIGN, target=ticket.ticket_number,
+                               detail=f"assigned to {ticket.assigned_to}")
                 messages.success(request, "Ticket updated.")
 
         return redirect("tickets:tech_ticket_detail", pk=pk)
@@ -174,6 +188,8 @@ class TechTicketCreate(TechRequiredMixin, CreateView):
                 body=description,
                 is_internal=False,
             )
+        log_action(self.request, AuditLog.Action.TICKET_CREATE, target=ticket.ticket_number,
+                   detail=f"Subject: {ticket.subject}")
         messages.success(self.request, f"Ticket {ticket.ticket_number} created.")
         return redirect("tickets:tech_ticket_detail", pk=ticket.pk)
 
@@ -387,6 +403,7 @@ class TechCompanyDetail(TechRequiredMixin, View):
         form = CompanyForm(request.POST, instance=company)
         if form.is_valid():
             form.save()
+            log_action(request, AuditLog.Action.COMPANY_UPDATE, target=company.name)
             messages.success(request, f"{company.name} updated.")
             return redirect("tickets:tech_company_detail", pk=pk)
         tickets = (
@@ -411,6 +428,7 @@ class TechCompanyCreate(TechRequiredMixin, View):
         form = CompanyForm(request.POST)
         if form.is_valid():
             company = form.save()
+            log_action(request, AuditLog.Action.COMPANY_CREATE, target=company.name)
             messages.success(request, f"{company.name} created.")
             return redirect("tickets:tech_company_detail", pk=company.pk)
         return render(request, self.template_name, {"form": form})

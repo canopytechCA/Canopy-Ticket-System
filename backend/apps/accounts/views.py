@@ -7,7 +7,8 @@ from django_ratelimit.decorators import ratelimit
 
 from apps.tickets.mixins import TechRequiredMixin
 from .forms import AdminPasswordForm, LoginForm, UserCreateForm, UserEditForm
-from .models import User
+from django.views.generic import ListView
+from .models import AuditLog, User, log_action
 
 
 class LoginView(auth_views.LoginView):
@@ -60,6 +61,8 @@ class TechUserCreate(TechRequiredMixin, View):
         form = UserCreateForm(request.POST)
         if form.is_valid():
             user = form.save()
+            log_action(request, AuditLog.Action.USER_CREATE, target=user.email,
+                       detail=f"role={user.role} company={user.company}")
             django_messages.success(request, f"{user.get_full_name()} created.")
             return redirect("tickets:tech_user_detail", pk=user.pk)
         return render(request, self.template_name, {"form": form})
@@ -86,7 +89,13 @@ class TechUserDetail(TechRequiredMixin, View):
         if action == "edit":
             form = UserEditForm(request.POST, instance=edit_user)
             if form.is_valid():
+                was_active = edit_user.is_active
                 form.save()
+                edit_user.refresh_from_db()
+                action_type = (AuditLog.Action.USER_DEACTIVATE
+                               if was_active and not edit_user.is_active
+                               else AuditLog.Action.USER_UPDATE)
+                log_action(request, action_type, target=edit_user.email)
                 django_messages.success(request, "User updated.")
                 return redirect("tickets:tech_user_detail", pk=pk)
             return render(request, self.template_name, {
@@ -100,6 +109,8 @@ class TechUserDetail(TechRequiredMixin, View):
             if password_form.is_valid():
                 edit_user.set_password(password_form.cleaned_data["password"])
                 edit_user.save(update_fields=["password"])
+                log_action(request, AuditLog.Action.USER_UPDATE, target=edit_user.email,
+                           detail="password reset by admin")
                 django_messages.success(request, "Password updated.")
                 return redirect("tickets:tech_user_detail", pk=pk)
             return render(request, self.template_name, {
@@ -109,3 +120,25 @@ class TechUserDetail(TechRequiredMixin, View):
             })
 
         return redirect("tickets:tech_user_detail", pk=pk)
+
+
+class TechAuditLog(TechRequiredMixin, ListView):
+    template_name = "tech/audit_log.html"
+    context_object_name = "entries"
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = AuditLog.objects.select_related("actor").order_by("-timestamp")
+        action = self.request.GET.get("action")
+        if action:
+            qs = qs.filter(action=action)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["action_choices"] = AuditLog.Action.choices
+        ctx["filters"] = self.request.GET
+        params = self.request.GET.copy()
+        params.pop("page", None)
+        ctx["filter_params"] = params.urlencode()
+        return ctx

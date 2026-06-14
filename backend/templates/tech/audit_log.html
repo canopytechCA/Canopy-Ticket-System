@@ -1,0 +1,87 @@
+{% extends "tech/base_tech.html" %}
+
+{% block title %}Audit Log — Canopy Tickets{% endblock %}
+
+{% block content %}
+<div class="p-6">
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-xl font-bold text-gray-900">Audit Log</h1>
+      <p class="text-sm text-gray-500 mt-1">All security and access events — read-only</p>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <form method="get" class="flex gap-3 mb-4 items-end">
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Event Type</label>
+      <select name="action" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+        <option value="">All Events</option>
+        {% for val, label in action_choices %}
+        <option value="{{ val }}" {% if filters.action == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Filter</button>
+    <a href="{% url 'tickets:tech_audit_log' %}" class="px-4 py-2 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100">Clear</a>
+  </form>
+
+  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Timestamp</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Actor</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Event</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Target</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Detail</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">IP Address</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for entry in entries %}
+        <tr class="{% if entry.action == 'LOGIN_FAILED' %}bg-red-50{% endif %}">
+          <td class="px-4 py-2 text-xs text-gray-500 whitespace-nowrap font-mono">{{ entry.timestamp|date:"Y-m-d H:i:s" }}</td>
+          <td class="px-4 py-2 text-xs text-gray-700">
+            {% if entry.actor %}{{ entry.actor.email }}{% else %}<span class="text-gray-400">API / System</span>{% endif %}
+          </td>
+          <td class="px-4 py-2">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+              {% if entry.action == 'LOGIN' %}bg-green-100 text-green-700
+              {% elif entry.action == 'LOGIN_FAILED' %}bg-red-100 text-red-700
+              {% elif entry.action == 'LOGOUT' %}bg-gray-100 text-gray-600
+              {% elif entry.action == 'USER_DEACTIVATE' %}bg-orange-100 text-orange-700
+              {% else %}bg-blue-100 text-blue-700{% endif %}">
+              {{ entry.get_action_display }}
+            </span>
+          </td>
+          <td class="px-4 py-2 text-xs text-gray-700 font-mono">{{ entry.target|default:"—" }}</td>
+          <td class="px-4 py-2 text-xs text-gray-500">{{ entry.detail|default:"" }}</td>
+          <td class="px-4 py-2 text-xs text-gray-400 font-mono">{{ entry.ip_address|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-4 py-12 text-center text-gray-400 text-sm">No events recorded yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+  <div class="flex justify-center gap-2 mt-4">
+    {% if page_obj.has_previous %}
+    <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.previous_page_number }}"
+       class="px-3 py-1 text-sm border rounded-lg hover:bg-gray-100">Previous</a>
+    {% endif %}
+    <span class="px-3 py-1 text-sm text-gray-600">Page {{ page_obj.number }} of {{ page_obj.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?{% if filter_params %}{{ filter_params }}&{% endif %}page={{ page_obj.next_page_number }}"
+       class="px-3 py-1 text-sm border rounded-lg hover:bg-gray-100">Next</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

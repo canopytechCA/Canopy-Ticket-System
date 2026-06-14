@@ -4,7 +4,9 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django_ratelimit.decorators import ratelimit
 
+from apps.accounts.models import AuditLog, log_action
 from apps.companies.models import Company
 from .models import Ticket, Message
 
@@ -20,6 +22,7 @@ def _authorized(request) -> bool:
 
 @csrf_exempt
 @require_POST
+@ratelimit(key="ip", rate="30/m", block=True)
 def create_ticket(request):
     if not _authorized(request):
         return JsonResponse({"error": "Unauthorized"}, status=401)
@@ -72,6 +75,17 @@ def create_ticket(request):
         author=None,
         body=message_body,
         is_internal=False,
+    )
+
+    AuditLog.objects.create(
+        actor=None,
+        action=AuditLog.Action.API_TICKET_CREATE,
+        target=ticket.ticket_number,
+        detail=f"company={company.slug} submitter={submitter_email}",
+        ip_address=(
+            (request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+             or request.META.get("REMOTE_ADDR")) or None
+        ),
     )
 
     return JsonResponse(
