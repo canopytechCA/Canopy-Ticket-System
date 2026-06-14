@@ -1,5 +1,10 @@
+import logging
+
 from django.contrib import messages as django_messages
+from django.contrib.auth import login as auth_login
 from django.contrib.auth import views as auth_views, update_session_auth_hash
+
+logger = logging.getLogger(__name__)
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import get_object_or_404, redirect, render
@@ -246,3 +251,63 @@ class ProfileView(LoginRequiredMixin, View):
             })
 
         return redirect("accounts:profile")
+
+
+# ── Microsoft 365 SSO ─────────────────────────────────────────────────────────
+
+class MicrosoftLoginView(View):
+    """Redirect the user to Microsoft's OAuth2 authorization endpoint."""
+
+    def get(self, request):
+        from .microsoft_auth import get_authorize_url
+        from django.conf import settings as djsettings
+        if not getattr(djsettings, "AZURE_CLIENT_ID", ""):
+            django_messages.error(request, "Microsoft sign-in is not configured.")
+            return redirect("accounts:login")
+        return redirect(get_authorize_url(request))
+
+
+class MicrosoftCallbackView(View):
+    """Handle the OAuth2 callback from Microsoft, log in the matching user."""
+
+    def get(self, request):
+        from .microsoft_auth import verify_state, get_user_info
+
+        if request.GET.get("error"):
+            django_messages.error(request, "Microsoft sign-in was cancelled.")
+            return redirect("accounts:login")
+
+        if not verify_state(request, request.GET.get("state", "")):
+            django_messages.error(request, "Invalid authentication state. Please try again.")
+            return redirect("accounts:login")
+
+        code = request.GET.get("code", "")
+        if not code:
+            django_messages.error(request, "No authorization code received from Microsoft.")
+            return redirect("accounts:login")
+
+        try:
+            info = get_user_info(request, code)
+        except RuntimeError as e:
+            logger.error("Microsoft SSO error: %s", e)
+            django_messages.error(request, "Could not complete Microsoft sign-in. Please try again.")
+            return redirect("accounts:login")
+
+        email = info["email"]
+
+        try:
+            user = User.objects.get(email__iexact=email, is_active=True)
+        except User.DoesNotExist:
+            django_messages.error(
+                request,
+                f"No active account found for {email}. "
+                "Contact your administrator to get access.",
+            )
+            return redirect("accounts:login")
+
+        auth_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        log_action(request, AuditLog.Action.LOGIN, target=user.email, detail="Microsoft SSO")
+
+        if user.is_tech:
+            return redirect("/tech/")
+        return redirect("/portal/")

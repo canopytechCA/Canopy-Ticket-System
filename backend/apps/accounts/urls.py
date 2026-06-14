@@ -7,6 +7,9 @@ urlpatterns = [
     path("login/", views.LoginView.as_view(), name="login"),
     path("logout/", views.LogoutView.as_view(), name="logout"),
     path("profile/", views.ProfileView.as_view(), name="profile"),
+    # Microsoft 365 SSO
+    path("microsoft/", views.MicrosoftLoginView.as_view(), name="microsoft_login"),
+    path("microsoft/callback/", views.MicrosoftCallbackView.as_view(), name="microsoft_callback"),
     # Password reset flow
     path("password-reset/", views.CanopyPasswordResetView.as_view(), name="password_reset"),
     path("password-reset/done/", views.CanopyPasswordResetDoneView.as_view(), name="password_reset_done"),

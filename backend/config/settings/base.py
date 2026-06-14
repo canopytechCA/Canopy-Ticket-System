@@ -106,5 +106,9 @@ GRAPH_CLIENT_ID = config("GRAPH_CLIENT_ID", default="")
 GRAPH_CLIENT_SECRET = config("GRAPH_CLIENT_SECRET", default="")
 GRAPH_TENANT_ID = config("GRAPH_TENANT_ID", default="")
 
+# Azure AD — Microsoft 365 SSO (can be the same app registration as Graph)
+AZURE_CLIENT_ID = config("AZURE_CLIENT_ID", default="")
+AZURE_CLIENT_SECRET = config("AZURE_CLIENT_SECRET", default="")
+
 # API key for service-to-service ticket creation (e.g. Chat Agent)
 CANOPY_API_KEY = config("CANOPY_API_KEY", default="")

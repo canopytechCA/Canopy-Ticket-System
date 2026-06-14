@@ -16,6 +16,27 @@
       <p class="text-sm text-gray-500 mt-1">Sign in to your account</p>
     </div>
 
+    <!-- Microsoft SSO -->
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-4">
+      <a href="{% url 'accounts:microsoft_login' %}"
+         class="flex items-center justify-center gap-3 w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 23 23">
+          <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
+          <path fill="#f35325" d="M1 1h10v10H1z"/>
+          <path fill="#81bc06" d="M12 1h10v10H12z"/>
+          <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+          <path fill="#ffba08" d="M12 12h10v10H12z"/>
+        </svg>
+        Sign in with Microsoft 365
+      </a>
+    </div>
+
+    <div class="flex items-center gap-3 mb-4">
+      <div class="flex-1 border-t border-gray-200"></div>
+      <span class="text-xs text-gray-400">or sign in with email</span>
+      <div class="flex-1 border-t border-gray-200"></div>
+    </div>
+
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
       <form method="post">
         {% csrf_token %}
