@@ -77,7 +77,7 @@
       <div class="mt-6 border-t border-gray-100 pt-4">
         <p class="text-xs font-medium text-gray-500 mb-3">Suggested for MSPs</p>
         <div class="flex flex-wrap gap-1.5">
-          {% for name in "Network & Connectivity,Hardware,Microsoft 365,Software,Security,Server / Infrastructure,General"|split:"," %}
+          {% for name in suggestions %}
           <span class="inline-flex px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">{{ name }}</span>
           {% endfor %}
         </div>

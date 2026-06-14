@@ -464,11 +464,20 @@ class TechCompanyCreate(TechRequiredMixin, View):
 class TechCategoryList(TechRequiredMixin, View):
     template_name = "tech/category_list.html"
 
-    def get(self, request):
-        return render(request, self.template_name, {
+    _suggestions = [
+        "Network & Connectivity", "Hardware", "Microsoft 365",
+        "Software", "Security", "Server / Infrastructure", "General",
+    ]
+
+    def _ctx(self, form):
+        return {
             "categories": Category.objects.annotate(ticket_count=Count("tickets")).order_by("name"),
-            "form": CategoryForm(),
-        })
+            "form": form,
+            "suggestions": self._suggestions,
+        }
+
+    def get(self, request):
+        return render(request, self.template_name, self._ctx(CategoryForm()))
 
     def post(self, request):
         form = CategoryForm(request.POST)
@@ -476,10 +485,7 @@ class TechCategoryList(TechRequiredMixin, View):
             cat = form.save()
             messages.success(request, f"Category '{cat.name}' created.")
             return redirect("tickets:tech_category_list")
-        return render(request, self.template_name, {
-            "categories": Category.objects.annotate(ticket_count=Count("tickets")).order_by("name"),
-            "form": form,
-        })
+        return render(request, self.template_name, self._ctx(form))
 
 
 class TechCategoryDetail(TechRequiredMixin, View):
