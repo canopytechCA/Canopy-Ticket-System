@@ -52,7 +52,7 @@
               hx-target="#message-thread"
               hx-swap="beforeend"
               hx-encoding="multipart/form-data"
-              hx-on::after-request="this.reset()">
+              hx-on::after-settle="this.reset()">
           {% csrf_token %}
           <input type="hidden" name="action" value="message">
           {{ message_form.body }}
@@ -105,45 +105,9 @@
 
       <!-- SLA panel -->
       {% if ticket.sla_resolve_deadline %}
-      <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <div id="sla-panel" class="bg-white rounded-xl border border-gray-200 p-4">
         <h3 class="text-sm font-semibold text-gray-700 mb-3">SLA</h3>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between items-center">
-            <span class="text-gray-500">First Response</span>
-            {% with status=ticket.sla_response_status %}
-            <span class="font-medium
-              {% if status == 'BREACHED' or status == 'MISSED' %}text-red-600
-              {% elif status == 'WARNING' %}text-orange-600
-              {% elif status == 'MET' %}text-green-600
-              {% else %}text-gray-700{% endif %}">
-              {% if status == 'MET' %}&#10003; Met
-              {% elif status == 'MISSED' %}&#10007; Missed
-              {% elif status == 'BREACHED' %}Breached
-              {% elif status == 'WARNING' %}Warning
-              {% else %}Pending{% endif %}
-            </span>
-            {% endwith %}
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="text-gray-500">Resolution</span>
-            {% with status=ticket.sla_resolve_status %}
-            <span class="font-medium
-              {% if status == 'BREACHED' or status == 'MISSED' %}text-red-600
-              {% elif status == 'WARNING' %}text-orange-600
-              {% elif status == 'MET' %}text-green-600
-              {% else %}text-gray-700{% endif %}">
-              {% if status == 'MET' %}&#10003; Met
-              {% elif status == 'MISSED' %}&#10007; Missed
-              {% elif status == 'BREACHED' %}{{ ticket.sla_resolve_display }}
-              {% elif status == 'WARNING' %}{{ ticket.sla_resolve_display }}
-              {% else %}{{ ticket.sla_resolve_display }}{% endif %}
-            </span>
-            {% endwith %}
-          </div>
-          <div class="text-xs text-gray-400 pt-1 border-t border-gray-100">
-            Deadline: {{ ticket.sla_resolve_deadline|date:"M j, Y g:i A" }}
-          </div>
-        </div>
+        {% include "tech/partials/sla_panel.html" %}
       </div>
       {% endif %}
 

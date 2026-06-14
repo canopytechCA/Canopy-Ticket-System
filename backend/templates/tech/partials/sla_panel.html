@@ -1,0 +1,35 @@
+{% with rs=ticket.sla_response_status rv=ticket.sla_resolve_status %}
+<div class="space-y-2 text-sm">
+  <div class="flex justify-between items-center">
+    <span class="text-gray-500">First Response</span>
+    <span class="font-medium
+      {% if rs == 'BREACHED' or rs == 'MISSED' %}text-red-600
+      {% elif rs == 'WARNING' %}text-orange-600
+      {% elif rs == 'MET' %}text-green-600
+      {% else %}text-gray-700{% endif %}">
+      {% if rs == 'MET' %}&#10003; Met
+      {% elif rs == 'MISSED' %}&#10007; Missed
+      {% elif rs == 'BREACHED' %}Breached
+      {% elif rs == 'WARNING' %}Warning
+      {% else %}Pending{% endif %}
+    </span>
+  </div>
+  <div class="flex justify-between items-center">
+    <span class="text-gray-500">Resolution</span>
+    <span class="font-medium
+      {% if rv == 'BREACHED' or rv == 'MISSED' %}text-red-600
+      {% elif rv == 'WARNING' %}text-orange-600
+      {% elif rv == 'MET' %}text-green-600
+      {% else %}text-gray-700{% endif %}">
+      {% if rv == 'MET' %}&#10003; Met
+      {% elif rv == 'MISSED' %}&#10007; Missed
+      {% elif rv == 'BREACHED' %}{{ ticket.sla_resolve_display }}
+      {% elif rv == 'WARNING' %}{{ ticket.sla_resolve_display }}
+      {% else %}{{ ticket.sla_resolve_display }}{% endif %}
+    </span>
+  </div>
+  <div class="text-xs text-gray-400 pt-1 border-t border-gray-100">
+    Deadline: {{ ticket.sla_resolve_deadline|date:"M j, Y g:i A" }}
+  </div>
+</div>
+{% endwith %}
