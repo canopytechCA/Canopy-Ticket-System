@@ -1,0 +1,79 @@
+{% extends "tech/base_tech.html" %}
+{% block title %}My Profile — Canopy Tickets{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-2xl mx-auto">
+  <h1 class="text-xl font-bold text-gray-900 mb-6">My Profile</h1>
+
+  <div class="grid grid-cols-2 gap-6">
+
+    <!-- Profile details -->
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-700 mb-4">Account Details</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="profile">
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">First Name</label>
+            {{ profile_form.first_name }}
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Last Name</label>
+            {{ profile_form.last_name }}
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Email</label>
+            <p class="text-sm text-gray-700 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">{{ request.user.email }}</p>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Role</label>
+            <p class="text-sm text-gray-700 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">{{ request.user.get_role_display }}</p>
+          </div>
+        </div>
+        {% if profile_form.errors %}
+        <div class="mt-3 text-sm text-red-600">
+          {% for error in profile_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        <button type="submit" class="w-full mt-4 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700">
+          Save Changes
+        </button>
+      </form>
+    </div>
+
+    <!-- Change password -->
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-700 mb-4">Change Password</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="password">
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Current Password</label>
+            {{ password_form.current_password }}
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">New Password</label>
+            {{ password_form.new_password }}
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Confirm New Password</label>
+            {{ password_form.confirm_password }}
+          </div>
+        </div>
+        {% if password_form.errors %}
+        <div class="mt-3 text-sm text-red-600">
+          {% for field in password_form %}{% for error in field.errors %}<p>{{ field.label }}: {{ error }}</p>{% endfor %}{% endfor %}
+          {% for error in password_form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
+        <button type="submit" class="w-full mt-4 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700">
+          Update Password
+        </button>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

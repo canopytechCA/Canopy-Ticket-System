@@ -94,6 +94,48 @@ class UserEditForm(forms.ModelForm):
         return email
 
 
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name"]
+        widgets = {
+            "first_name": forms.TextInput(attrs={"class": INPUT_CLASS}),
+            "last_name": forms.TextInput(attrs={"class": INPUT_CLASS}),
+        }
+
+
+class SelfPasswordChangeForm(forms.Form):
+    current_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS}),
+        label="Current password",
+    )
+    new_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "placeholder": "Min. 12 characters"}),
+        min_length=12,
+        label="New password",
+    )
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS}),
+        label="Confirm new password",
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_current_password(self):
+        pw = self.cleaned_data["current_password"]
+        if not self.user.check_password(pw):
+            raise forms.ValidationError("Your current password is incorrect.")
+        return pw
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("new_password") != cleaned.get("confirm_password"):
+            raise forms.ValidationError("New passwords do not match.")
+        return cleaned
+
+
 class AdminPasswordForm(forms.Form):
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "placeholder": "Min. 12 characters"}),

@@ -29,7 +29,7 @@
           <div class="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
             {{ request.user.first_name.0 }}{{ request.user.last_name.0 }}
           </div>
-          {{ request.user.get_full_name }}
+          <a href="{% url 'accounts:profile' %}" class="hover:text-gray-900">{{ request.user.get_full_name }}</a>
           <form method="post" action="{% url 'accounts:logout' %}">
             {% csrf_token %}
             <button type="submit" class="text-gray-400 hover:text-gray-600 ml-1" title="Sign out">

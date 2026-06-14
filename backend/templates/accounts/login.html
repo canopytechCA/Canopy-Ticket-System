@@ -40,7 +40,10 @@
         </div>
         {% endif %}
 
-        <button type="submit" class="w-full mt-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+        <div class="flex justify-end mt-2">
+          <a href="{% url 'accounts:password_reset' %}" class="text-xs text-blue-600 hover:underline">Forgot password?</a>
+        </div>
+        <button type="submit" class="w-full mt-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
           Sign In
         </button>
       </form>

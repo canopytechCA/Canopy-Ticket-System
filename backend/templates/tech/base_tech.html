@@ -101,10 +101,10 @@
         <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
           {{ request.user.first_name.0 }}{{ request.user.last_name.0 }}
         </div>
-        <div class="flex-1 min-w-0">
+        <a href="{% url 'accounts:profile' %}" class="flex-1 min-w-0 hover:opacity-80">
           <p class="text-sm font-medium text-white truncate">{{ request.user.get_full_name }}</p>
-          <p class="text-xs text-gray-400 truncate">Technician</p>
-        </div>
+          <p class="text-xs text-gray-400 truncate">My Profile</p>
+        </a>
         <form method="post" action="{% url 'accounts:logout' %}">
           {% csrf_token %}
           <button type="submit" class="text-gray-400 hover:text-white" title="Sign out">
