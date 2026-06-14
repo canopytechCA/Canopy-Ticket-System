@@ -461,6 +461,72 @@ class TechCompanyCreate(TechRequiredMixin, View):
 
 # ── Category management ───────────────────────────────────────────────────────
 
+class TechBulkAction(TechRequiredMixin, View):
+    def post(self, request):
+        ticket_ids = request.POST.getlist("ticket_ids")
+        action = request.POST.get("action", "")
+        return_url = request.POST.get("return_url", "")
+
+        if not ticket_ids:
+            messages.warning(request, "No tickets selected.")
+            return self._redirect(return_url)
+
+        tickets = Ticket.objects.filter(pk__in=ticket_ids)
+        count = tickets.count()
+
+        if action == "close":
+            tickets.update(status=Ticket.Status.CLOSED, resolved_at=None)
+            messages.success(request, f"{count} ticket(s) closed.")
+
+        elif action == "resolve":
+            tickets.update(status=Ticket.Status.RESOLVED, resolved_at=timezone.now())
+            messages.success(request, f"{count} ticket(s) resolved.")
+
+        elif action == "set_status":
+            status = request.POST.get("status")
+            if status in dict(Ticket.Status.choices):
+                update = {"status": status}
+                if status == Ticket.Status.RESOLVED:
+                    update["resolved_at"] = timezone.now()
+                elif status != Ticket.Status.RESOLVED:
+                    update["resolved_at"] = None
+                tickets.update(**update)
+                messages.success(request, f"{count} ticket(s) updated.")
+
+        elif action == "assign":
+            assigned_to_id = request.POST.get("assigned_to") or None
+            tickets.update(assigned_to_id=assigned_to_id)
+            messages.success(request, f"{count} ticket(s) reassigned.")
+
+        elif action == "set_priority":
+            priority = request.POST.get("priority")
+            if priority in dict(Ticket.Priority.choices):
+                tickets.update(priority=priority)
+                messages.success(request, f"{count} ticket(s) reprioritized.")
+
+        elif action == "set_category":
+            category_id = request.POST.get("category") or None
+            tickets.update(category_id=category_id)
+            messages.success(request, f"{count} ticket(s) recategorized.")
+
+        else:
+            messages.error(request, "Unknown action.")
+            return self._redirect(return_url)
+
+        log_action(
+            request, AuditLog.Action.TICKET_STATUS,
+            target=f"{count} tickets",
+            detail=f"bulk {action} on: {', '.join(t.ticket_number for t in tickets[:10])}",
+        )
+        return self._redirect(return_url)
+
+    def _redirect(self, return_url):
+        if return_url and return_url.startswith("/tech/"):
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(return_url)
+        return redirect("tickets:tech_dashboard")
+
+
 class TechCategoryList(TechRequiredMixin, View):
     template_name = "tech/category_list.html"
 

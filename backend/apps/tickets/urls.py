@@ -24,6 +24,7 @@ urlpatterns = [
     path("tech/companies/", views.TechCompanyList.as_view(), name="tech_company_list"),
     path("tech/companies/new/", views.TechCompanyCreate.as_view(), name="tech_company_create"),
     path("tech/companies/<int:pk>/", views.TechCompanyDetail.as_view(), name="tech_company_detail"),
+    path("tech/bulk/", views.TechBulkAction.as_view(), name="tech_bulk_action"),
     path("tech/categories/", views.TechCategoryList.as_view(), name="tech_category_list"),
     path("tech/categories/<int:pk>/", views.TechCategoryDetail.as_view(), name="tech_category_detail"),
     path("tech/users/", account_views.TechUserList.as_view(), name="tech_user_list"),

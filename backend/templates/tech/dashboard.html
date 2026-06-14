@@ -85,53 +85,139 @@
     <a href="{% url 'tickets:tech_dashboard' %}" class="px-4 py-2 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100">Clear</a>
   </form>
 
-  <!-- Ticket table -->
-  <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Ticket</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Subject</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Company</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Category</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Priority</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">SLA</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Assigned</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Created</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-100">
-        {% for ticket in tickets %}
-        <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='{% url 'tickets:tech_ticket_detail' ticket.pk %}'">
-          <td class="px-4 py-3 text-sm font-mono font-medium text-gray-700">{{ ticket.ticket_number }}</td>
-          <td class="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{{ ticket.subject }}</td>
-          <td class="px-4 py-3 text-sm text-gray-600">{{ ticket.company.name }}</td>
-          <td class="px-4 py-3">
-            {% include "tech/partials/category_badge.html" with ticket=ticket %}
-          </td>
-          <td class="px-4 py-3">
-            {% include "tech/partials/priority_badge.html" with ticket=ticket %}
-          </td>
-          <td class="px-4 py-3">
-            {% include "tech/partials/status_badge.html" with ticket=ticket %}
-          </td>
-          <td class="px-4 py-3">
-            {% include "tech/partials/sla_badge.html" with ticket=ticket %}
-          </td>
-          <td class="px-4 py-3 text-sm text-gray-600">
-            {{ ticket.assigned_to.get_full_name|default:"—" }}
-          </td>
-          <td class="px-4 py-3 text-sm text-gray-500">{{ ticket.created_at|date:"M j, Y" }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="8" class="px-4 py-12 text-center text-gray-400 text-sm">No tickets found.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  <!-- Ticket table with bulk actions -->
+  <div x-data="bulkActions([{% for t in tickets %}'{{ t.pk }}'{% if not forloop.last %},{% endif %}{% endfor %}])">
+
+    <!-- Bulk action bar -->
+    <div x-show="count > 0" x-cloak
+         class="mb-3 bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-wrap items-center gap-3">
+      <span class="text-sm font-semibold text-blue-800" x-text="count + ' ticket(s) selected'"></span>
+
+      <form method="post" action="{% url 'tickets:tech_bulk_action' %}" class="flex flex-wrap items-center gap-2 flex-1">
+        {% csrf_token %}
+        <template x-for="id in selected" :key="id">
+          <input type="hidden" name="ticket_ids" :value="id">
+        </template>
+        <input type="hidden" name="return_url" value="{{ request.get_full_path }}">
+
+        <select name="action" x-model="action"
+                class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+          <option value="">— Choose action —</option>
+          <option value="close">Close tickets</option>
+          <option value="resolve">Mark resolved</option>
+          <option value="set_status">Set status…</option>
+          <option value="assign">Assign to tech…</option>
+          <option value="set_priority">Set priority…</option>
+          <option value="set_category">Set category…</option>
+        </select>
+
+        <!-- Status selector -->
+        <select name="status" x-show="action === 'set_status'"
+                class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
+          {% for val, label in status_choices %}
+          <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <!-- Tech selector -->
+        <select name="assigned_to" x-show="action === 'assign'"
+                class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
+          <option value="">— Unassign —</option>
+          {% for tech in techs %}
+          <option value="{{ tech.pk }}">{{ tech.get_full_name }}</option>
+          {% endfor %}
+        </select>
+
+        <!-- Priority selector -->
+        <select name="priority" x-show="action === 'set_priority'"
+                class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
+          {% for val, label in priority_choices %}
+          <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <!-- Category selector -->
+        <select name="category" x-show="action === 'set_category'"
+                class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
+          <option value="">— No category —</option>
+          {% for cat in categories %}
+          <option value="{{ cat.pk }}">{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+
+        <button type="submit" :disabled="!action"
+                class="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">
+          Apply
+        </button>
+      </form>
+
+      <button type="button" @click="selected = []; allChecked = false"
+              class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+        Clear selection
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 w-10">
+              <input type="checkbox" x-model="allChecked" @change="toggleAll($event.target.checked)"
+                     class="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer">
+            </th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Ticket</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Subject</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Company</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Category</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Priority</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">SLA</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Assigned</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Created</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for ticket in tickets %}
+          <tr class="hover:bg-gray-50 cursor-pointer"
+              :class="isSelected('{{ ticket.pk }}') ? 'bg-blue-50' : ''"
+              onclick="window.location='{% url 'tickets:tech_ticket_detail' ticket.pk %}'">
+            <td class="px-4 py-3" @click.stop>
+              <input type="checkbox"
+                     :checked="isSelected('{{ ticket.pk }}')"
+                     @change="toggle('{{ ticket.pk }}')"
+                     class="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer">
+            </td>
+            <td class="px-4 py-3 text-sm font-mono font-medium text-gray-700">{{ ticket.ticket_number }}</td>
+            <td class="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{{ ticket.subject }}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">{{ ticket.company.name }}</td>
+            <td class="px-4 py-3">
+              {% include "tech/partials/category_badge.html" with ticket=ticket %}
+            </td>
+            <td class="px-4 py-3">
+              {% include "tech/partials/priority_badge.html" with ticket=ticket %}
+            </td>
+            <td class="px-4 py-3">
+              {% include "tech/partials/status_badge.html" with ticket=ticket %}
+            </td>
+            <td class="px-4 py-3">
+              {% include "tech/partials/sla_badge.html" with ticket=ticket %}
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-600">
+              {{ ticket.assigned_to.get_full_name|default:"—" }}
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-500">{{ ticket.created_at|date:"M j, Y" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10" class="px-4 py-12 text-center text-gray-400 text-sm">No tickets found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- end x-data -->
 
   <!-- Pagination -->
   {% if is_paginated %}
@@ -147,4 +233,27 @@
   {% endif %}
 
 </div>
+
+<script>
+function bulkActions(pageIds) {
+  return {
+    selected: [],
+    allChecked: false,
+    action: '',
+    pageIds: pageIds,
+    get count() { return this.selected.length; },
+    toggle(id) {
+      const idx = this.selected.indexOf(id);
+      if (idx >= 0) this.selected.splice(idx, 1);
+      else this.selected.push(id);
+      this.allChecked = this.selected.length === this.pageIds.length;
+    },
+    toggleAll(checked) {
+      this.selected = checked ? [...this.pageIds] : [];
+      this.allChecked = checked;
+    },
+    isSelected(id) { return this.selected.includes(id); },
+  };
+}
+</script>
 {% endblock %}
