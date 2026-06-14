@@ -5,6 +5,7 @@ from django.views.generic import ListView, CreateView, DetailView, View
 from .forms import ClientTicketForm, MessageForm
 from .mixins import ClientRequiredMixin
 from .models import Ticket, Message, Attachment
+from .notifications import notify_ticket_confirmed, notify_new_reply
 
 
 class ClientDashboard(ClientRequiredMixin, ListView):
@@ -48,6 +49,7 @@ class ClientTicketCreate(ClientRequiredMixin, CreateView):
             body=form.cleaned_data["description"],
             is_internal=False,
         )
+        notify_ticket_confirmed(ticket)
         messages.success(self.request, f"Your ticket {ticket.ticket_number} has been submitted. We'll be in touch soon.")
         return redirect("portal:ticket_detail", pk=ticket.pk)
 
@@ -87,6 +89,8 @@ class ClientTicketDetail(ClientRequiredMixin, View):
 
             for f in request.FILES.getlist("attachments"):
                 Attachment.objects.create(message=msg, file=f, filename=f.name)
+
+            notify_new_reply(msg)
 
             # If ticket was waiting on client, move it back to open
             if ticket.status == Ticket.Status.WAITING_CLIENT:

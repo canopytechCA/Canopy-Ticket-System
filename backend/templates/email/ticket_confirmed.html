@@ -1,0 +1,47 @@
+{% extends "email/base_email.html" %}
+{% block body %}
+<p style="margin:0 0 8px;color:#374151;font-size:15px;">Hi {{ recipient_name }},</p>
+<p style="margin:0 0 24px;color:#374151;font-size:15px;">
+  Thank you for reaching out. We've received your support request and a technician will be in touch shortly.
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;margin-bottom:24px;">
+  <tr>
+    <td style="padding:20px 24px;">
+      <p style="margin:0 0 4px;color:#0369a1;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Your Ticket Number</p>
+      <p style="margin:0 0 16px;color:#0c4a6e;font-size:20px;font-weight:700;font-family:monospace;">{{ ticket.ticket_number }}</p>
+
+      <p style="margin:0 0 4px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Subject</p>
+      <p style="margin:0 0 16px;color:#1e293b;font-size:15px;font-weight:600;">{{ ticket.subject }}</p>
+
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="50%" style="padding-right:12px;">
+            <p style="margin:0 0 4px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Priority</p>
+            <p style="margin:0;color:#374151;font-size:14px;">{{ ticket.get_priority_display }}</p>
+          </td>
+          <td width="50%">
+            <p style="margin:0 0 4px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Status</p>
+            <p style="margin:0;color:#374151;font-size:14px;">Open</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0 0 24px;color:#6b7280;font-size:13px;line-height:1.6;">
+  You can track your ticket and reply to our team at any time through the support portal.
+  Please keep your ticket number for reference.
+</p>
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td>
+      <a href="{{ ticket_url }}" style="display:inline-block;background-color:#1e40af;color:#ffffff;font-size:14px;font-weight:600;padding:12px 24px;border-radius:6px;text-decoration:none;">
+        View Your Ticket →
+      </a>
+    </td>
+  </tr>
+</table>
+{% endblock %}

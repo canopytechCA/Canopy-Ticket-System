@@ -35,6 +35,28 @@ def _render(template: str, context: dict) -> str:
     return render_to_string(f"email/{template}", context)
 
 
+# ── Client confirmation ───────────────────────────────────────────────────────
+
+def notify_ticket_confirmed(ticket) -> None:
+    """
+    Send a confirmation to the client immediately after they submit a ticket.
+    """
+    client = ticket.created_by
+    if not client or not client.email:
+        return
+    context = {
+        "ticket": ticket,
+        "ticket_url": _portal_url(ticket),
+        "recipient_name": client.get_full_name(),
+    }
+    send_email(
+        client.email,
+        client.get_full_name(),
+        f"[{ticket.ticket_number}] We received your request: {ticket.subject}",
+        _render("ticket_confirmed.html", context),
+    )
+
+
 # ── New ticket ────────────────────────────────────────────────────────────────
 
 def notify_ticket_created(ticket) -> None:

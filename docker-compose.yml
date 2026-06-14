@@ -41,6 +41,23 @@ services:
              python manage.py collectstatic --noinput &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
 
+  email-inbound:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "while true; do python manage.py process_email_replies; sleep 300; done"
+
   nginx:
     image: nginx:alpine
     restart: unless-stopped

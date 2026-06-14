@@ -15,6 +15,7 @@ from apps.companies.models import Company
 from .forms import TicketForm, MessageForm, TimeEntryForm, TicketStatusForm, CompanyForm
 from .mixins import TechRequiredMixin
 from .models import Ticket, Message, TimeEntry, Attachment
+from .notifications import notify_new_reply, notify_ticket_assigned, notify_status_changed, notify_ticket_created
 
 
 # ── Tech portal ──────────────────────────────────────────────────────────────
@@ -121,6 +122,7 @@ class TechTicketDetail(TechRequiredMixin, View):
 
                 log_action(request, AuditLog.Action.MESSAGE_ADD, target=ticket.ticket_number,
                            detail=f"internal={msg.is_internal}")
+                notify_new_reply(msg)
 
                 if request.htmx:
                     all_attachments = Attachment.objects.filter(
@@ -166,6 +168,9 @@ class TechTicketDetail(TechRequiredMixin, View):
                 if ticket.assigned_to_id != old_assignee:
                     log_action(request, AuditLog.Action.TICKET_ASSIGN, target=ticket.ticket_number,
                                detail=f"assigned to {ticket.assigned_to}")
+                    notify_ticket_assigned(ticket)
+                if ticket.status != old_status:
+                    notify_status_changed(ticket, old_status)
                 messages.success(request, "Ticket updated.")
 
         return redirect("tickets:tech_ticket_detail", pk=pk)
@@ -190,6 +195,7 @@ class TechTicketCreate(TechRequiredMixin, CreateView):
             )
         log_action(self.request, AuditLog.Action.TICKET_CREATE, target=ticket.ticket_number,
                    detail=f"Subject: {ticket.subject}")
+        notify_ticket_created(ticket)
         messages.success(self.request, f"Ticket {ticket.ticket_number} created.")
         return redirect("tickets:tech_ticket_detail", pk=ticket.pk)
 
