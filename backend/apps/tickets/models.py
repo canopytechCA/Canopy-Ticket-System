@@ -1,4 +1,5 @@
 import os
+import random
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -84,9 +85,14 @@ class Ticket(models.Model):
         is_new = not self.pk
 
         if not self.ticket_number:
-            last = Ticket.objects.order_by("-id").first()
-            next_id = (last.id + 1) if last else 1
-            self.ticket_number = f"T-{next_id:04d}"
+            year = timezone.now().year
+            for _ in range(10):
+                candidate = f"T-{year}-{random.randint(10000, 99999)}"
+                if not Ticket.objects.filter(ticket_number=candidate).exists():
+                    self.ticket_number = candidate
+                    break
+            else:
+                self.ticket_number = f"T-{year}-{random.randint(100000, 999999)}"
 
         if self.status == self.Status.RESOLVED and not self.resolved_at:
             self.resolved_at = timezone.now()

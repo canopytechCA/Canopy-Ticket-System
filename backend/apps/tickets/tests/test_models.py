@@ -32,16 +32,19 @@ class TicketNumberTests(TestCase):
         self.tech = make_tech()
 
     def test_ticket_number_auto_generated(self):
+        from django.utils import timezone
         t = make_ticket(self.company, self.tech)
-        self.assertTrue(t.ticket_number.startswith("T-"))
-        self.assertTrue(t.ticket_number[2:].isdigit())
+        year = str(timezone.now().year)
+        parts = t.ticket_number.split("-")
+        self.assertEqual(parts[0], "T")
+        self.assertEqual(parts[1], year)
+        self.assertTrue(parts[2].isdigit())
+        self.assertGreaterEqual(len(parts[2]), 5)
 
-    def test_ticket_numbers_are_sequential(self):
+    def test_ticket_numbers_are_unique(self):
         t1 = make_ticket(self.company, self.tech)
         t2 = make_ticket(self.company, self.tech)
-        n1 = int(t1.ticket_number.split("-")[1])
-        n2 = int(t2.ticket_number.split("-")[1])
-        self.assertEqual(n2, n1 + 1)
+        self.assertNotEqual(t1.ticket_number, t2.ticket_number)
 
     def test_ticket_number_not_overwritten_on_update(self):
         t = make_ticket(self.company, self.tech)

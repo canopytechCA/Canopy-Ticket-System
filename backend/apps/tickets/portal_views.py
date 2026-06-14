@@ -35,6 +35,9 @@ class ClientTicketCreate(ClientRequiredMixin, CreateView):
     template_name = "portal/ticket_create.html"
 
     def form_valid(self, form):
+        if not self.request.user.company:
+            messages.error(self.request, "Your account is not linked to a company. Please contact support.")
+            return self.form_invalid(form)
         ticket = form.save(commit=False)
         ticket.created_by = self.request.user
         ticket.company = self.request.user.company
