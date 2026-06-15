@@ -187,18 +187,19 @@ class TechTicketCreate(TechRequiredMixin, CreateView):
 
     def form_valid(self, form):
         ticket = form.save(commit=False)
-        ticket.created_by = self.request.user
+        submitted_by = form.cleaned_data.get("submitted_by")
+        ticket.created_by = submitted_by if submitted_by else self.request.user
         ticket.save()
         description = form.cleaned_data.get("description")
         if description:
             Message.objects.create(
                 ticket=ticket,
-                author=self.request.user,
+                author=ticket.created_by,
                 body=description,
                 is_internal=False,
             )
         log_action(self.request, AuditLog.Action.TICKET_CREATE, target=ticket.ticket_number,
-                   detail=f"Subject: {ticket.subject}")
+                   detail=f"Subject: {ticket.subject}" + (f" on behalf of {submitted_by}" if submitted_by else ""))
         notify_ticket_created(ticket)
         messages.success(self.request, f"Ticket {ticket.ticket_number} created.")
         return redirect("tickets:tech_ticket_detail", pk=ticket.pk)

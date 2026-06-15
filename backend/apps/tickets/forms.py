@@ -8,7 +8,23 @@ SELECT_CLASS = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 
 TEXTAREA_CLASS = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-y"
 
 
+class _ClientChoiceField(forms.ModelChoiceField):
+    """Shows 'Full Name — Company' in the dropdown for easy identification."""
+    def label_from_instance(self, obj):
+        company = obj.company.name if obj.company else "No company"
+        return f"{obj.get_full_name()} — {company}"
+
+
 class TicketForm(forms.ModelForm):
+    submitted_by = _ClientChoiceField(
+        queryset=None,
+        required=False,
+        empty_label="— Tech-created (no client) —",
+        widget=forms.Select(attrs={"class": SELECT_CLASS}),
+        label="On behalf of",
+        help_text="Select the client who reported this issue, if applicable.",
+    )
+
     class Meta:
         model = Ticket
         fields = ["company", "category", "subject", "description", "priority", "assigned_to"]
@@ -30,6 +46,9 @@ class TicketForm(forms.ModelForm):
         self.fields["category"].queryset = Category.objects.filter(is_active=True)
         self.fields["category"].required = False
         self.fields["category"].empty_label = "— No category —"
+        self.fields["submitted_by"].queryset = User.objects.filter(
+            role=User.Role.CLIENT, is_active=True
+        ).select_related("company").order_by("company__name", "last_name", "first_name")
 
 
 class ClientTicketForm(forms.ModelForm):
