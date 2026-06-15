@@ -5,34 +5,34 @@
 
   <!-- Top nav -->
   <nav class="bg-white border-b border-gray-200">
-    <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
           </svg>
         </div>
-        <div>
-          <span class="font-semibold text-gray-900">Canopy Support</span>
+        <div class="min-w-0">
+          <span class="font-semibold text-gray-900 text-sm sm:text-base">Canopy Support</span>
           {% if request.user.company %}
-          <span class="text-gray-400 text-sm ml-2">— {{ request.user.company.name }}</span>
+          <span class="text-gray-400 text-xs sm:text-sm ml-1 hidden sm:inline">— {{ request.user.company.name }}</span>
           {% endif %}
         </div>
       </div>
 
-      <div class="flex items-center gap-4">
-        <a href="{% url 'portal:dashboard' %}" class="text-sm text-gray-600 hover:text-gray-900">My Tickets</a>
-        <a href="{% url 'portal:ticket_create' %}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+      <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+        <a href="{% url 'portal:dashboard' %}" class="hidden sm:block text-sm text-gray-600 hover:text-gray-900">My Tickets</a>
+        <a href="{% url 'portal:ticket_create' %}" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-blue-700 whitespace-nowrap">
           + New Ticket
         </a>
-        <div class="flex items-center gap-2 text-sm text-gray-600">
-          <div class="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600">
+        <div class="flex items-center gap-1 sm:gap-2 text-sm text-gray-600">
+          <a href="{% url 'accounts:profile' %}" class="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 hover:bg-gray-300" title="{{ request.user.get_full_name }}">
             {{ request.user.first_name.0 }}{{ request.user.last_name.0 }}
-          </div>
-          <a href="{% url 'accounts:profile' %}" class="hover:text-gray-900">{{ request.user.get_full_name }}</a>
+          </a>
+          <a href="{% url 'accounts:profile' %}" class="hidden md:block hover:text-gray-900 truncate max-w-24">{{ request.user.get_full_name }}</a>
           <form method="post" action="{% url 'accounts:logout' %}">
             {% csrf_token %}
-            <button type="submit" class="text-gray-400 hover:text-gray-600 ml-1" title="Sign out">
+            <button type="submit" class="text-gray-400 hover:text-gray-600" title="Sign out">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
               </svg>
@@ -44,7 +44,7 @@
   </nav>
 
   <!-- Main -->
-  <main class="max-w-5xl mx-auto px-6 py-8">
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
     {% block content %}{% endblock %}
   </main>
 

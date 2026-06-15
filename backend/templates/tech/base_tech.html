@@ -1,93 +1,106 @@
 {% extends "base.html" %}
 
 {% block body %}
-<div class="min-h-full flex">
+<div class="min-h-full flex" x-data="{ open: false }">
+
+  <!-- Mobile backdrop -->
+  <div x-show="open" @click="open = false" x-cloak
+       class="fixed inset-0 z-20 bg-black/50 lg:hidden"></div>
 
   <!-- Sidebar -->
-  <aside class="w-64 bg-gray-900 flex flex-col flex-shrink-0">
+  <aside class="fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 flex flex-col
+                -translate-x-full lg:translate-x-0 lg:relative lg:flex-shrink-0
+                transition-transform duration-200 ease-in-out"
+         :class="open ? 'translate-x-0' : ''">
+
     <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-700">
-      <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+      <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
       </div>
-      <span class="text-white font-semibold text-lg">Canopy Tickets</span>
+      <span class="text-white font-semibold text-lg flex-1">Canopy Tickets</span>
+      <button @click="open = false" class="text-gray-400 hover:text-white lg:hidden">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
     </div>
 
-    <nav class="flex-1 px-4 py-6 space-y-1">
-      <a href="{% url 'tickets:tech_dashboard' %}"
+    <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+      <a href="{% url 'tickets:tech_dashboard' %}" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
            {% if request.resolver_match.url_name == 'tech_dashboard' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
         </svg>
         All Tickets
       </a>
 
-      <a href="{% url 'tickets:tech_dashboard' %}?assignee=me"
+      <a href="{% url 'tickets:tech_dashboard' %}?assignee=me" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
         </svg>
         My Tickets
       </a>
 
-      <a href="{% url 'tickets:tech_dashboard' %}?status=OPEN"
+      <a href="{% url 'tickets:tech_dashboard' %}?status=OPEN" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
         Open
       </a>
 
-      <a href="{% url 'tickets:tech_dashboard' %}?assignee=unassigned"
+      <a href="{% url 'tickets:tech_dashboard' %}?assignee=unassigned" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
         Unassigned
       </a>
 
-      <a href="{% url 'tickets:tech_reports' %}"
+      <a href="{% url 'tickets:tech_reports' %}" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
            {% if request.resolver_match.url_name == 'tech_reports' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
         </svg>
         Reports
       </a>
 
-      <a href="{% url 'tickets:tech_category_list' %}"
+      <a href="{% url 'tickets:tech_category_list' %}" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
            {% if 'category' in request.resolver_match.url_name %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
         </svg>
         Categories
       </a>
 
-      <a href="{% url 'tickets:tech_company_list' %}"
+      <a href="{% url 'tickets:tech_company_list' %}" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
            {% if 'company' in request.resolver_match.url_name %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
         </svg>
         Companies
       </a>
 
-      <a href="{% url 'tickets:tech_audit_log' %}"
+      <a href="{% url 'tickets:tech_audit_log' %}" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
            {% if request.resolver_match.url_name == 'tech_audit_log' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
         </svg>
         Audit Log
       </a>
 
-      <a href="{% url 'tickets:tech_user_list' %}"
+      <a href="{% url 'tickets:tech_user_list' %}" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
            {% if 'user' in request.resolver_match.url_name %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
         </svg>
         Users
@@ -95,9 +108,9 @@
 
       <div class="border-t border-gray-700 my-3"></div>
 
-      <a href="{% url 'tickets:tech_ticket_create' %}"
+      <a href="{% url 'tickets:tech_ticket_create' %}" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
         New Ticket
@@ -107,7 +120,7 @@
     <!-- User section -->
     <div class="px-4 py-4 border-t border-gray-700">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+        <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
           {{ request.user.first_name.0 }}{{ request.user.last_name.0 }}
         </div>
         <a href="{% url 'accounts:profile' %}" class="flex-1 min-w-0 hover:opacity-80">
@@ -126,8 +139,26 @@
     </div>
   </aside>
 
+  <!-- Mobile top bar -->
+  <div class="lg:hidden fixed top-0 inset-x-0 z-10 h-14 bg-gray-900 flex items-center px-4 gap-3 border-b border-gray-700">
+    <button @click="open = true" class="text-gray-300 hover:text-white">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+    <div class="w-6 h-6 bg-blue-500 rounded-md flex items-center justify-center">
+      <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+    </div>
+    <span class="text-white font-semibold">Canopy Tickets</span>
+    <a href="{% url 'tickets:tech_ticket_create' %}" class="ml-auto">
+      <span class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg">+ New</span>
+    </a>
+  </div>
+
   <!-- Main content -->
-  <main class="flex-1 overflow-auto">
+  <main class="flex-1 overflow-auto pt-14 lg:pt-0 min-w-0">
     {% block content %}{% endblock %}
   </main>
 
