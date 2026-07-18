@@ -96,12 +96,15 @@ class TimeEntryForm(forms.ModelForm):
 class TicketStatusForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ["status", "priority", "category", "assigned_to"]
+        fields = ["status", "priority", "category", "assigned_to", "company", "subject", "description"]
         widgets = {
             "status": forms.Select(attrs={"class": SELECT_CLASS}),
             "priority": forms.Select(attrs={"class": SELECT_CLASS}),
             "category": forms.Select(attrs={"class": SELECT_CLASS}),
             "assigned_to": forms.Select(attrs={"class": SELECT_CLASS}),
+            "company": forms.Select(attrs={"class": SELECT_CLASS}),
+            "subject": forms.TextInput(attrs={"class": INPUT_CLASS, "placeholder": "Brief summary of the issue"}),
+            "description": forms.Textarea(attrs={"class": TEXTAREA_CLASS, "rows": 6, "placeholder": "Describe the issue in detail..."}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -113,6 +116,9 @@ class TicketStatusForm(forms.ModelForm):
         self.fields["category"].queryset = Category.objects.filter(is_active=True)
         self.fields["category"].required = False
         self.fields["category"].empty_label = "— No category —"
+        self.fields["company"].queryset = Company.objects.filter(is_active=True)
+        self.fields["company"].required = False
+        self.fields["company"].empty_label = "— No Company —"
 
 
 class CategoryForm(forms.ModelForm):

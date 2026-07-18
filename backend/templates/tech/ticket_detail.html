@@ -14,7 +14,7 @@
         &nbsp;{{ ticket.subject }}
       </h1>
       <p class="text-sm text-gray-500 mt-1">
-        {{ ticket.company.name }} &middot; Opened by {{ ticket.created_by.get_full_name|default:"Unknown" }} on {{ ticket.created_at|date:"M j, Y g:i A" }}
+        {{ ticket.company.name|default:"—" }} &middot; Opened by {{ ticket.created_by.get_full_name|default:"Unknown" }} on {{ ticket.created_at|date:"M j, Y g:i A" }}
       </p>
     </div>
     <div class="flex gap-2">
@@ -96,6 +96,14 @@
           <input type="hidden" name="action" value="status">
           <div class="space-y-3">
             <div>
+              <label class="block text-xs text-gray-500 mb-1">Subject</label>
+              {{ status_form.subject }}
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Company</label>
+              {{ status_form.company }}
+            </div>
+            <div>
               <label class="block text-xs text-gray-500 mb-1">Status</label>
               {{ status_form.status }}
             </div>
@@ -110,6 +118,10 @@
             <div>
               <label class="block text-xs text-gray-500 mb-1">Assigned To</label>
               {{ status_form.assigned_to }}
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">Description</label>
+              {{ status_form.description }}
             </div>
           </div>
           <button type="submit" class="w-full mt-4 px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700">

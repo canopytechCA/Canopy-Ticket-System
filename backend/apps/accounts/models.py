@@ -83,6 +83,7 @@ class AuditLog(models.Model):
         API_TICKET_CREATE = "API_TICKET_CREATE", "Ticket Created via API"
         TICKET_DELETE = "TICKET_DELETE", "Ticket Deleted"
         TICKET_MERGE = "TICKET_MERGE", "Tickets Merged"
+        EMAIL_TICKET_CREATE = "EMAIL_TICKET_CREATE", "Ticket Created via Email"
 
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     actor = models.ForeignKey(

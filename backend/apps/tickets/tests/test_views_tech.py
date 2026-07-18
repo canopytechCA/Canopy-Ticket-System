@@ -163,6 +163,8 @@ class TechTicketDetailTests(TestCase):
             "action": "status",
             "status": Ticket.Status.IN_PROGRESS,
             "priority": self.ticket.priority,
+            "subject": self.ticket.subject,
+            "description": self.ticket.description,
         })
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.status, Ticket.Status.IN_PROGRESS)
@@ -174,6 +176,8 @@ class TechTicketDetailTests(TestCase):
             "status": self.ticket.status,
             "priority": self.ticket.priority,
             "assigned_to": tech2.pk,
+            "subject": self.ticket.subject,
+            "description": self.ticket.description,
         })
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.assigned_to, tech2)

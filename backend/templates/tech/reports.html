@@ -133,7 +133,7 @@
         <tr class="hover:bg-red-50 cursor-pointer" onclick="window.location='{% url 'tickets:tech_ticket_detail' ticket.pk %}'">
           <td class="py-2 font-mono text-gray-600">{{ ticket.ticket_number }}</td>
           <td class="py-2 text-gray-900 max-w-xs truncate">{{ ticket.subject }}</td>
-          <td class="py-2 text-gray-600">{{ ticket.company.name }}</td>
+          <td class="py-2 text-gray-600">{{ ticket.company.name|default:"—" }}</td>
           <td class="py-2">{% include "tech/partials/priority_badge.html" with ticket=ticket %}</td>
           <td class="py-2 text-red-600 font-medium">{{ ticket.sla_resolve_display }}</td>
           <td class="py-2 text-gray-500">{{ ticket.assigned_to.get_full_name|default:"Unassigned" }}</td>

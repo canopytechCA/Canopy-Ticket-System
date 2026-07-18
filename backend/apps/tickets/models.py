@@ -78,7 +78,8 @@ class Ticket(models.Model):
         related_name="tickets",
     )
     company = models.ForeignKey(
-        "companies.Company", on_delete=models.PROTECT, related_name="tickets"
+        "companies.Company", on_delete=models.PROTECT, related_name="tickets",
+        null=True, blank=True,
     )
     created_by = models.ForeignKey(
         "accounts.User",

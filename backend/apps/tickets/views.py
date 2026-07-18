@@ -30,8 +30,10 @@ def _validate_merge(loser, survivor):
     if survivor.pk == loser.pk:
         return "A ticket cannot be merged into itself."
     if survivor.company_id != loser.company_id:
+        survivor_co = survivor.company.name if survivor.company else "no company"
+        loser_co = loser.company.name if loser.company else "no company"
         return (f"Cannot merge — {survivor.ticket_number} belongs to "
-                f"{survivor.company.name}, but this ticket belongs to {loser.company.name}. "
+                f"{survivor_co}, but this ticket belongs to {loser_co}. "
                 f"Merges are only allowed within the same company.")
     if loser.merged_into_id:
         return f"This ticket was already merged into {loser.merged_into.ticket_number}."
@@ -63,7 +65,9 @@ class TechDashboard(TechRequiredMixin, ListView):
 
         if status:
             qs = qs.filter(status=status)
-        if company:
+        if company == "none":
+            qs = qs.filter(company__isnull=True)
+        elif company:
             qs = qs.filter(company_id=company)
         if assignee == "me":
             qs = qs.filter(assigned_to=self.request.user)
@@ -207,6 +211,8 @@ class TechTicketDetail(TechRequiredMixin, View):
                 if ticket.status != old_status:
                     notify_status_changed(ticket, old_status)
                 messages.success(request, "Ticket updated.")
+            else:
+                messages.error(request, "Could not update ticket — check the form for errors.")
 
         return redirect("tickets:tech_ticket_detail", pk=pk)
 
@@ -271,7 +277,7 @@ class TechTicketDeleteConfirm(TechRequiredMixin, View):
         with transaction.atomic():
             ticket_number = ticket.ticket_number
             subject = ticket.subject
-            company_name = ticket.company.name
+            company_name = ticket.company.name if ticket.company else "—"
             message_count = ticket.messages.count()
             total_minutes = ticket.total_minutes
             log_action(
@@ -445,7 +451,7 @@ class TechReports(TechRequiredMixin, TemplateView):
             .annotate(count=Count("id"))
             .order_by("-count")[:10]
         )
-        ctx["chart_company_labels"] = json.dumps([r["company__name"] for r in by_company])
+        ctx["chart_company_labels"] = json.dumps([r["company__name"] or "No Company" for r in by_company])
         ctx["chart_company_data"] = json.dumps([r["count"] for r in by_company])
 
         # ── Workload by tech ──
@@ -513,7 +519,7 @@ class TechTimeExport(TechRequiredMixin, View):
             for entry in qs:
                 h, m = divmod(entry.minutes, 60)
                 yield [
-                    entry.ticket.company.name,
+                    entry.ticket.company.name if entry.ticket.company else "—",
                     entry.ticket.ticket_number,
                     entry.ticket.subject,
                     entry.tech.get_full_name() if entry.tech else "",

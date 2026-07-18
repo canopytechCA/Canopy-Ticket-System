@@ -20,7 +20,7 @@
         <span class="font-mono text-gray-500">{{ loser.ticket_number }}</span> {{ loser.subject }}
       </p>
       <dl class="text-sm space-y-1">
-        <div class="flex justify-between"><dt class="text-gray-500">Company</dt><dd class="text-gray-900">{{ loser.company.name }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Company</dt><dd class="text-gray-900">{{ loser.company.name|default:"—" }}</dd></div>
         <div class="flex justify-between"><dt class="text-gray-500">Messages</dt><dd class="text-gray-900">{{ loser_message_count }}</dd></div>
         <div class="flex justify-between"><dt class="text-gray-500">Time logged</dt><dd class="text-gray-900">{{ loser_minutes }} min</dd></div>
       </dl>
@@ -32,7 +32,7 @@
         <span class="font-mono text-gray-500">{{ survivor.ticket_number }}</span> {{ survivor.subject }}
       </p>
       <dl class="text-sm space-y-1">
-        <div class="flex justify-between"><dt class="text-gray-500">Company</dt><dd class="text-gray-900">{{ survivor.company.name }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Company</dt><dd class="text-gray-900">{{ survivor.company.name|default:"—" }}</dd></div>
         <div class="flex justify-between"><dt class="text-gray-500">Messages</dt><dd class="text-gray-900">{{ survivor_message_count }}</dd></div>
         <div class="flex justify-between"><dt class="text-gray-500">Time logged</dt><dd class="text-gray-900">{{ survivor_minutes }} min</dd></div>
       </dl>
