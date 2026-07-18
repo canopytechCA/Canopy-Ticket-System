@@ -37,7 +37,7 @@ docker compose exec web python manage.py migrate
 docker compose exec web python manage.py seed_dev
 ```
 
-Access on port 8080 (behind nginx), then point your Cloudflare tunnel to `localhost:8080`.
+Access on port 3067 (behind the bundled nginx container — see `ports` under the `nginx` service in `docker-compose.yml`), then point your reverse proxy (Nginx Proxy Manager, Cloudflare Tunnel, etc.) at `<host>:3067`.
 
 ---
 
