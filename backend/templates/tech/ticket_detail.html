@@ -23,6 +23,16 @@
     </div>
   </div>
 
+  {% if ticket.is_merged %}
+  <div class="mb-6 px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-700">
+    This ticket was merged into
+    <a href="{% url 'tickets:tech_ticket_detail' ticket.merged_into.pk %}" class="font-medium text-blue-600 hover:underline">
+      {{ ticket.merged_into.ticket_number }}
+    </a>
+    and is now read-only history.
+  </div>
+  {% endif %}
+
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     <!-- Left: thread -->
@@ -78,6 +88,7 @@
     <div class="space-y-4">
 
       <!-- Status / Assignment -->
+      {% if not ticket.is_merged %}
       <div class="bg-white rounded-xl border border-gray-200 p-4">
         <h3 class="text-sm font-semibold text-gray-700 mb-3">Ticket Details</h3>
         <form method="post" action="{% url 'tickets:tech_ticket_detail' ticket.pk %}">
@@ -106,6 +117,7 @@
           </button>
         </form>
       </div>
+      {% endif %}
 
       <!-- SLA panel -->
       {% if ticket.sla_resolve_deadline %}
@@ -153,6 +165,7 @@
           </table>
         </div>
 
+        {% if not ticket.is_merged %}
         <form method="post" action="{% url 'tickets:tech_ticket_detail' ticket.pk %}"
               hx-post="{% url 'tickets:tech_ticket_detail' ticket.pk %}"
               hx-target="#time-table tbody"
@@ -174,6 +187,30 @@
             Log Time
           </button>
         </form>
+        {% endif %}
+      </div>
+
+      <!-- Danger zone -->
+      <div class="bg-white rounded-xl border border-red-200 p-4">
+        <h3 class="text-sm font-semibold text-red-700 mb-3">Danger Zone</h3>
+
+        {% if not ticket.is_merged %}
+        <form method="get" action="{% url 'tickets:tech_ticket_merge_confirm' ticket.pk %}" class="mb-3">
+          <label class="block text-xs text-gray-500 mb-1">Merge this ticket into another ticket #</label>
+          <div class="flex gap-2">
+            <input type="text" name="target" placeholder="e.g. T-2026-12345" required
+                   class="flex-1 min-w-0 rounded-lg border-gray-300 text-sm">
+            <button type="submit" class="px-3 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 whitespace-nowrap">
+              Preview Merge
+            </button>
+          </div>
+        </form>
+        {% endif %}
+
+        <a href="{% url 'tickets:tech_ticket_delete_confirm' ticket.pk %}"
+           class="block w-full text-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">
+          Delete Ticket
+        </a>
       </div>
 
     </div>

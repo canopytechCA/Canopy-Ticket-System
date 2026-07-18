@@ -105,6 +105,13 @@ class Ticket(models.Model):
     sla_response_deadline = models.DateTimeField(null=True, blank=True)
     sla_resolve_deadline = models.DateTimeField(null=True, blank=True)
     first_response_at = models.DateTimeField(null=True, blank=True)
+    merged_into = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="merged_tickets",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -142,6 +149,10 @@ class Ticket(models.Model):
     @property
     def is_open(self):
         return self.status not in (self.Status.RESOLVED, self.Status.CLOSED)
+
+    @property
+    def is_merged(self):
+        return self.merged_into_id is not None
 
     @property
     def total_minutes(self):

@@ -102,7 +102,10 @@
          class="mb-3 bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-wrap items-center gap-3">
       <span class="text-sm font-semibold text-blue-800" x-text="count + ' ticket(s) selected'"></span>
 
-      <form method="post" action="{% url 'tickets:tech_bulk_action' %}" class="flex flex-wrap items-center gap-2 flex-1">
+      <form method="post"
+            action="{% url 'tickets:tech_bulk_action' %}"
+            :action="action === 'delete' ? '{% url "tickets:tech_bulk_delete_confirm" %}' : '{% url "tickets:tech_bulk_action" %}'"
+            class="flex flex-wrap items-center gap-2 flex-1">
         {% csrf_token %}
         <template x-for="id in selected" :key="id">
           <input type="hidden" name="ticket_ids" :value="id">
@@ -118,6 +121,7 @@
           <option value="assign">Assign to tech…</option>
           <option value="set_priority">Set priority…</option>
           <option value="set_category">Set category…</option>
+          <option value="delete">Delete tickets…</option>
         </select>
 
         <!-- Status selector -->

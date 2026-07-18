@@ -72,7 +72,11 @@
   </div>
   {% else %}
   <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-sm text-gray-500">
+    {% if ticket.merged_into %}
+    This ticket was merged into ticket #{{ ticket.merged_into.ticket_number }}. Please refer to that ticket for the latest updates.
+    {% else %}
     This ticket is {{ ticket.get_status_display|lower }}. If you need further assistance, please open a new ticket.
+    {% endif %}
   </div>
   {% endif %}
 

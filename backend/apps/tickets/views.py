@@ -3,6 +3,7 @@ import json
 from datetime import timedelta
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Avg, Count, ExpressionWrapper, F, FloatField, Q, Sum
 from django.db.models.functions import TruncDate
 from django.http import StreamingHttpResponse
@@ -18,6 +19,29 @@ from .models import Ticket, Message, TimeEntry, Attachment, Category
 from .notifications import notify_new_reply, notify_ticket_assigned, notify_status_changed, notify_ticket_created
 
 
+def _validate_merge(loser, survivor):
+    """Returns None if a merge of `loser` into `survivor` is allowed, else an
+    error message string. Same-company is a hard rule - moving Message rows
+    across companies would leak one client's conversation onto another
+    client's visible ticket thread. `merged_into` is kept to a single hop by
+    construction (merging into an already-merged ticket is rejected), so
+    resolving "the real survivor" is always one dereference, never a chain walk.
+    """
+    if survivor.pk == loser.pk:
+        return "A ticket cannot be merged into itself."
+    if survivor.company_id != loser.company_id:
+        return (f"Cannot merge — {survivor.ticket_number} belongs to "
+                f"{survivor.company.name}, but this ticket belongs to {loser.company.name}. "
+                f"Merges are only allowed within the same company.")
+    if loser.merged_into_id:
+        return f"This ticket was already merged into {loser.merged_into.ticket_number}."
+    if survivor.merged_into_id:
+        return (f"{survivor.ticket_number} has itself been merged into "
+                f"{survivor.merged_into.ticket_number}. Merge into "
+                f"{survivor.merged_into.ticket_number} instead.")
+    return None
+
+
 # ── Tech portal ──────────────────────────────────────────────────────────────
 
 class TechDashboard(TechRequiredMixin, ListView):
@@ -27,6 +51,9 @@ class TechDashboard(TechRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = Ticket.objects.select_related("company", "assigned_to", "created_by", "category")
+        # A merged-away ticket is an alias for its survivor, never independent
+        # queue inventory - exclude unconditionally, regardless of any status filter.
+        qs = qs.exclude(merged_into__isnull=False)
         status = self.request.GET.get("status")
         company = self.request.GET.get("company")
         assignee = self.request.GET.get("assignee")
@@ -102,6 +129,10 @@ class TechTicketDetail(TechRequiredMixin, View):
     def post(self, request, pk):
         ticket = self.get_ticket(pk)
         action = request.POST.get("action")
+
+        if ticket.is_merged:
+            messages.error(request, "This ticket has been merged and is now read-only.")
+            return redirect("tickets:tech_ticket_detail", pk=pk)
 
         if action == "message":
             form = MessageForm(request.POST, is_tech=True)
@@ -205,6 +236,128 @@ class TechTicketCreate(TechRequiredMixin, CreateView):
         return redirect("tickets:tech_ticket_detail", pk=ticket.pk)
 
 
+class TechTicketDeleteConfirm(TechRequiredMixin, View):
+    template_name = "tech/ticket_delete_confirm.html"
+
+    def get(self, request, pk):
+        ticket = get_object_or_404(
+            Ticket.objects.select_related("company", "created_by")
+                         .prefetch_related("merged_tickets"),
+            pk=pk,
+        )
+        return render(request, self.template_name, {
+            "ticket": ticket,
+            "message_count": ticket.messages.count(),
+            "total_minutes": ticket.total_minutes,
+            "blocking_survivors": ticket.merged_tickets.all(),
+        })
+
+    def post(self, request, pk):
+        ticket = get_object_or_404(Ticket, pk=pk)
+
+        # Deleting a merge survivor would silently orphan the tickets merged
+        # into it: merged_into uses SET_NULL, so it wouldn't error - it would
+        # just clear merged_into on everything merged into this ticket and
+        # destroy their moved messages/time entries along with it (they
+        # physically live on this ticket's row now).
+        if ticket.merged_tickets.exists():
+            messages.error(
+                request,
+                "This ticket can't be deleted — other tickets were merged into it. "
+                "Delete those first if you really want this history gone.",
+            )
+            return redirect("tickets:tech_ticket_delete_confirm", pk=pk)
+
+        with transaction.atomic():
+            ticket_number = ticket.ticket_number
+            subject = ticket.subject
+            company_name = ticket.company.name
+            message_count = ticket.messages.count()
+            total_minutes = ticket.total_minutes
+            log_action(
+                request, AuditLog.Action.TICKET_DELETE, target=ticket_number,
+                detail=(f"Subject: {subject} (Company: {company_name}) — "
+                        f"{message_count} messages, {total_minutes} min logged — permanently deleted"),
+            )
+            ticket.delete()
+
+        messages.success(request, f"Ticket {ticket_number} permanently deleted.")
+        return redirect("tickets:tech_dashboard")
+
+
+class TechTicketMergeConfirm(TechRequiredMixin, View):
+    template_name = "tech/ticket_merge_confirm.html"
+
+    def get(self, request, pk):
+        loser = get_object_or_404(Ticket.objects.select_related("company"), pk=pk)
+        target_raw = request.GET.get("target", "").strip()
+        if not target_raw:
+            messages.error(request, "Enter a ticket number to merge into.")
+            return redirect("tickets:tech_ticket_detail", pk=pk)
+
+        survivor = Ticket.objects.select_related("company").filter(
+            ticket_number__iexact=target_raw
+        ).first()
+        if survivor is None:
+            messages.error(request, f"No ticket found with number '{target_raw}'.")
+            return redirect("tickets:tech_ticket_detail", pk=pk)
+
+        error = _validate_merge(loser, survivor)
+        if error:
+            messages.error(request, error)
+            return redirect("tickets:tech_ticket_detail", pk=pk)
+
+        return render(request, self.template_name, {
+            "loser": loser,
+            "survivor": survivor,
+            "loser_message_count": loser.messages.count(),
+            "loser_minutes": loser.total_minutes,
+            "survivor_message_count": survivor.messages.count(),
+            "survivor_minutes": survivor.total_minutes,
+        })
+
+    def post(self, request, pk):
+        loser = get_object_or_404(Ticket.objects.select_related("company"), pk=pk)
+        survivor = get_object_or_404(
+            Ticket.objects.select_related("company"),
+            pk=request.POST.get("survivor_id"),
+        )
+
+        # Re-validate on commit, not just on preview - state may have changed
+        # between GET and POST (e.g. someone else merged one of these tickets
+        # in the meantime).
+        error = _validate_merge(loser, survivor)
+        if error:
+            messages.error(request, error)
+            return redirect("tickets:tech_ticket_detail", pk=pk)
+
+        with transaction.atomic():
+            loser_message_count = loser.messages.count()
+            loser_minutes = loser.total_minutes
+
+            Message.objects.filter(ticket=loser).update(ticket=survivor)
+            TimeEntry.objects.filter(ticket=loser).update(ticket=survivor)
+
+            loser.status = Ticket.Status.CLOSED
+            loser.merged_into = survivor
+            loser.resolved_at = None
+            loser.save(update_fields=["status", "merged_into", "resolved_at", "updated_at"])
+
+            Message.objects.create(
+                ticket=survivor, author=request.user, is_internal=True,
+                body=f"Merged ticket {loser.ticket_number} into this ticket.",
+            )
+
+            log_action(
+                request, AuditLog.Action.TICKET_MERGE,
+                target=f"{loser.ticket_number}→{survivor.ticket_number}",
+                detail=f"moved {loser_message_count} messages, {loser_minutes} min",
+            )
+
+        messages.success(request, f"{loser.ticket_number} merged into {survivor.ticket_number}.")
+        return redirect("tickets:tech_ticket_detail", pk=survivor.pk)
+
+
 class TechReports(TechRequiredMixin, TemplateView):
     template_name = "tech/reports.html"
 
@@ -218,7 +371,10 @@ class TechReports(TechRequiredMixin, TemplateView):
         active_statuses = [Ticket.Status.OPEN, Ticket.Status.IN_PROGRESS, Ticket.Status.WAITING_CLIENT]
         closed_statuses = [Ticket.Status.RESOLVED, Ticket.Status.CLOSED]
 
-        all_tickets = Ticket.objects.all()
+        # Exclude merged-away tickets everywhere in reports - they're aliases
+        # for their survivor, not independent inventory, and would double-count
+        # that work across every breakdown below.
+        all_tickets = Ticket.objects.exclude(merged_into__isnull=False)
 
         # ── Summary cards ──
         ctx["total_this_month"] = all_tickets.filter(created_at__gte=month_start).count()
@@ -462,6 +618,33 @@ class TechCompanyCreate(TechRequiredMixin, View):
 
 # ── Category management ───────────────────────────────────────────────────────
 
+class TechBulkDeleteConfirm(TechRequiredMixin, View):
+    """Review step before a bulk hard-delete - ticket ids only exist in the
+    submitted form body, so this is POST-only, no GET."""
+
+    def post(self, request):
+        ticket_ids = request.POST.getlist("ticket_ids")
+        return_url = request.POST.get("return_url", "")
+
+        if not ticket_ids:
+            messages.warning(request, "No tickets selected.")
+            return redirect("tickets:tech_dashboard")
+
+        tickets = (
+            Ticket.objects.filter(pk__in=ticket_ids)
+            .select_related("company")
+            .prefetch_related("merged_tickets")
+        )
+        deletable = [t for t in tickets if not t.merged_tickets.exists()]
+        blocked = [t for t in tickets if t.merged_tickets.exists()]
+
+        return render(request, "tech/bulk_delete_confirm.html", {
+            "deletable": deletable,
+            "blocked": blocked,
+            "return_url": return_url,
+        })
+
+
 class TechBulkAction(TechRequiredMixin, View):
     def post(self, request):
         ticket_ids = request.POST.getlist("ticket_ids")
@@ -474,6 +657,29 @@ class TechBulkAction(TechRequiredMixin, View):
 
         tickets = Ticket.objects.filter(pk__in=ticket_ids)
         count = tickets.count()
+
+        if action == "delete":
+            # Re-apply the survivor guard here too, not just in the confirm
+            # view - protects against a stale confirm page being resubmitted
+            # after another tech merges one of these tickets in the interim.
+            deletable = tickets.exclude(merged_tickets__isnull=False)
+            numbers = list(deletable.values_list("ticket_number", flat=True))
+            skipped = count - len(numbers)
+            deletable.delete()
+            log_action(
+                request, AuditLog.Action.TICKET_DELETE,
+                target=f"{len(numbers)} tickets",
+                detail=f"bulk delete: {', '.join(numbers[:10])}",
+            )
+            if skipped:
+                messages.warning(
+                    request,
+                    f"{len(numbers)} ticket(s) permanently deleted. "
+                    f"{skipped} skipped (merge survivors — delete their merged tickets first).",
+                )
+            else:
+                messages.success(request, f"{len(numbers)} ticket(s) permanently deleted.")
+            return self._redirect(return_url)
 
         if action == "close":
             tickets.update(status=Ticket.Status.CLOSED, resolved_at=None)

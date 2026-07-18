@@ -1,0 +1,59 @@
+{% extends "tech/base_tech.html" %}
+
+{% block title %}Merge {{ loser.ticket_number }} — Canopy Tickets{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-3xl mx-auto">
+
+  <a href="{% url 'tickets:tech_ticket_detail' loser.pk %}" class="text-sm text-blue-600 hover:underline">&larr; Back to ticket</a>
+
+  <h1 class="text-xl font-bold text-gray-900 mt-2 mb-2">Merge Ticket</h1>
+  <p class="text-sm text-gray-500 mb-6">
+    All messages and time entries will move from the ticket on the left to the ticket on the right.
+    The left ticket will close and become read-only history pointing to the right one.
+  </p>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white rounded-xl border border-gray-200 p-5">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Will be absorbed (closes)</p>
+      <p class="text-sm font-medium text-gray-900 mb-3">
+        <span class="font-mono text-gray-500">{{ loser.ticket_number }}</span> {{ loser.subject }}
+      </p>
+      <dl class="text-sm space-y-1">
+        <div class="flex justify-between"><dt class="text-gray-500">Company</dt><dd class="text-gray-900">{{ loser.company.name }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Messages</dt><dd class="text-gray-900">{{ loser_message_count }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Time logged</dt><dd class="text-gray-900">{{ loser_minutes }} min</dd></div>
+      </dl>
+    </div>
+
+    <div class="bg-white rounded-xl border border-green-200 p-5">
+      <p class="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Survivor (keeps everything)</p>
+      <p class="text-sm font-medium text-gray-900 mb-3">
+        <span class="font-mono text-gray-500">{{ survivor.ticket_number }}</span> {{ survivor.subject }}
+      </p>
+      <dl class="text-sm space-y-1">
+        <div class="flex justify-between"><dt class="text-gray-500">Company</dt><dd class="text-gray-900">{{ survivor.company.name }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Messages</dt><dd class="text-gray-900">{{ survivor_message_count }}</dd></div>
+        <div class="flex justify-between"><dt class="text-gray-500">Time logged</dt><dd class="text-gray-900">{{ survivor_minutes }} min</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <div class="bg-amber-50 border border-amber-200 rounded-xl p-5">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="survivor_id" value="{{ survivor.pk }}">
+      <div class="flex gap-3">
+        <button type="submit" class="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700">
+          Confirm Merge
+        </button>
+        <a href="{% url 'tickets:tech_ticket_detail' loser.pk %}"
+           class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
