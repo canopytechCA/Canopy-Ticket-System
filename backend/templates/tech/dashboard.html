@@ -112,7 +112,7 @@
 
       <form method="post"
             action="{% url 'tickets:tech_bulk_action' %}"
-            :action="action === 'delete' ? '{% url "tickets:tech_bulk_delete_confirm" %}' : '{% url "tickets:tech_bulk_action" %}'"
+            @submit="if (action === 'delete') { $el.action = '{% url "tickets:tech_bulk_delete_confirm" %}'; }"
             class="flex flex-wrap items-center gap-2 flex-1">
         {% csrf_token %}
         <template x-for="id in selected" :key="id">
