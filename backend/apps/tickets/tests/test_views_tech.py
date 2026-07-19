@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -357,3 +359,66 @@ class TechCompanyCreateTests(TestCase):
         })
         co = Company.objects.get(name="Redirect Corp")
         self.assertRedirects(r, reverse("tickets:tech_company_detail", kwargs={"pk": co.pk}))
+
+
+class TechBulkActionNotificationTests(TestCase):
+    """tickets.update() bypasses save()/signals, so bulk resolve/close used to
+    silently skip the client notification email that the single-ticket status
+    change path already sends."""
+
+    def setUp(self):
+        self.company = make_company()
+        self.tech = make_tech()
+        self.client_user = make_client_user(company=self.company)
+        self.c = Client()
+        self.c.force_login(self.tech)
+
+    def test_bulk_resolve_notifies_each_client(self):
+        t1 = make_ticket(self.company, self.client_user, status=Ticket.Status.OPEN)
+        t2 = make_ticket(self.company, self.client_user, status=Ticket.Status.IN_PROGRESS)
+        with patch("apps.tickets.views.notify_status_changed") as mock_notify:
+            self.c.post(reverse("tickets:tech_bulk_action"), {
+                "ticket_ids": [t1.pk, t2.pk],
+                "action": "resolve",
+            })
+        self.assertEqual(mock_notify.call_count, 2)
+        mock_notify.assert_any_call(t1, Ticket.Status.OPEN)
+        mock_notify.assert_any_call(t2, Ticket.Status.IN_PROGRESS)
+
+    def test_bulk_close_notifies_client(self):
+        t1 = make_ticket(self.company, self.client_user, status=Ticket.Status.OPEN)
+        with patch("apps.tickets.views.notify_status_changed") as mock_notify:
+            self.c.post(reverse("tickets:tech_bulk_action"), {
+                "ticket_ids": [t1.pk],
+                "action": "close",
+            })
+        mock_notify.assert_called_once_with(t1, Ticket.Status.OPEN)
+
+    def test_bulk_set_status_notifies_client(self):
+        t1 = make_ticket(self.company, self.client_user, status=Ticket.Status.OPEN)
+        with patch("apps.tickets.views.notify_status_changed") as mock_notify:
+            self.c.post(reverse("tickets:tech_bulk_action"), {
+                "ticket_ids": [t1.pk],
+                "action": "set_status",
+                "status": Ticket.Status.CLOSED,
+            })
+        mock_notify.assert_called_once_with(t1, Ticket.Status.OPEN)
+
+    def test_bulk_resolve_skips_already_resolved_tickets(self):
+        already = make_ticket(self.company, self.client_user, status=Ticket.Status.RESOLVED)
+        with patch("apps.tickets.views.notify_status_changed") as mock_notify:
+            self.c.post(reverse("tickets:tech_bulk_action"), {
+                "ticket_ids": [already.pk],
+                "action": "resolve",
+            })
+        mock_notify.assert_not_called()
+
+    def test_bulk_resolve_actually_updates_status(self):
+        t1 = make_ticket(self.company, self.client_user, status=Ticket.Status.OPEN)
+        self.c.post(reverse("tickets:tech_bulk_action"), {
+            "ticket_ids": [t1.pk],
+            "action": "resolve",
+        })
+        t1.refresh_from_db()
+        self.assertEqual(t1.status, Ticket.Status.RESOLVED)
+        self.assertIsNotNone(t1.resolved_at)

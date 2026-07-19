@@ -697,22 +697,28 @@ class TechBulkAction(TechRequiredMixin, View):
             return self._redirect(return_url)
 
         if action == "close":
+            old_statuses = dict(tickets.exclude(status=Ticket.Status.CLOSED).values_list("pk", "status"))
             tickets.update(status=Ticket.Status.CLOSED, resolved_at=None)
+            self._notify_status_changes(old_statuses)
             messages.success(request, f"{count} ticket(s) closed.")
 
         elif action == "resolve":
+            old_statuses = dict(tickets.exclude(status=Ticket.Status.RESOLVED).values_list("pk", "status"))
             tickets.update(status=Ticket.Status.RESOLVED, resolved_at=timezone.now())
+            self._notify_status_changes(old_statuses)
             messages.success(request, f"{count} ticket(s) resolved.")
 
         elif action == "set_status":
             status = request.POST.get("status")
             if status in dict(Ticket.Status.choices):
+                old_statuses = dict(tickets.exclude(status=status).values_list("pk", "status"))
                 update = {"status": status}
                 if status == Ticket.Status.RESOLVED:
                     update["resolved_at"] = timezone.now()
                 elif status != Ticket.Status.RESOLVED:
                     update["resolved_at"] = None
                 tickets.update(**update)
+                self._notify_status_changes(old_statuses)
                 messages.success(request, f"{count} ticket(s) updated.")
 
         elif action == "assign":
@@ -741,6 +747,16 @@ class TechBulkAction(TechRequiredMixin, View):
             detail=f"bulk {action} on: {', '.join(t.ticket_number for t in tickets[:10])}",
         )
         return self._redirect(return_url)
+
+    def _notify_status_changes(self, old_statuses):
+        """old_statuses: {pk: status before the bulk update}. .update() bypasses
+        save()/signals, so notify_status_changed has to be called explicitly
+        per ticket here — same as the single-ticket status change path."""
+        if not old_statuses:
+            return
+        updated = Ticket.objects.filter(pk__in=old_statuses.keys()).select_related("created_by")
+        for t in updated:
+            notify_status_changed(t, old_statuses[t.pk])
 
     def _redirect(self, return_url):
         if return_url and return_url.startswith("/tech/"):
