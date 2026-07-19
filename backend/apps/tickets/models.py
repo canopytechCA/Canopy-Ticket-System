@@ -254,3 +254,15 @@ class Attachment(models.Model):
     @property
     def is_image(self):
         return self.extension in (".jpg", ".jpeg", ".png", ".gif", ".webp")
+
+
+class EmailPollState(models.Model):
+    """Singleton cursor for process_email_replies - always exactly one row
+    (pk=1). Tracks the cutoff below which inbox emails are never processed,
+    so a backlog of old unread mail (e.g. sitting there before this feature
+    was deployed, or accumulated during downtime) never gets swept into
+    tickets/replies the next time the poller runs."""
+    last_received_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"EmailPollState(last_received_at={self.last_received_at})"

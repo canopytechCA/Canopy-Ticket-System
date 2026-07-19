@@ -3,8 +3,15 @@ process_email_replies — polls the support mailbox for replies to existing
 tickets (pins them as Messages) and for unrecognized emails (creates new
 tickets from them).
 
+Only ever processes mail received after a persistent cutoff (EmailPollState,
+one row, DB-backed so it survives restarts/redeploys) - never a backlog of
+old unread mail. The very first time this command ever runs, it just
+records "now" as the cutoff and processes nothing; every run after that
+only looks at mail received since the last run.
+
 How it works:
-  1. Fetches unread emails from SUPPORT_EMAIL mailbox via Microsoft Graph.
+  1. Fetches unread emails received since the last poll from SUPPORT_EMAIL
+     mailbox via Microsoft Graph.
   2. Looks for a ticket number in the subject: [T-2026-34567]
   3. If found, creates a Message on that ticket from the email body.
   4. If not found, creates a brand new ticket from the email instead:
@@ -42,7 +49,7 @@ from django.utils import timezone
 from apps.accounts.email_service import _get_token
 from apps.accounts.models import AuditLog, User
 from apps.companies.models import Company
-from apps.tickets.models import Message, Ticket
+from apps.tickets.models import EmailPollState, Message, Ticket
 from apps.tickets.notifications import notify_ticket_confirmed, notify_ticket_created
 
 logger = logging.getLogger(__name__)
@@ -74,10 +81,16 @@ def _strip_html(html: str) -> str:
     return stripper.get_text().strip()
 
 
-def _get_unread_messages(token: str, mailbox: str) -> list[dict]:
+def _get_unread_messages(token: str, mailbox: str, since=None) -> list[dict]:
+    """Fetch unread messages, optionally only those received after `since`
+    (a datetime). The `since` cutoff is what stops a backlog of old unread
+    mail from being swept into tickets/replies on every poll."""
+    filt = "isRead eq false"
+    if since is not None:
+        filt += f" and receivedDateTime gt {since.strftime('%Y-%m-%dT%H:%M:%SZ')}"
     url = (
         f"{_GRAPH_BASE}/users/{mailbox}/messages"
-        "?$filter=isRead eq false"
+        f"?$filter={filt}"
         "&$orderby=receivedDateTime asc"
         "&$top=25"
         "&$select=id,subject,body,from,receivedDateTime"
@@ -134,9 +147,30 @@ class Command(BaseCommand):
 
         mailbox = settings.SUPPORT_EMAIL
 
+        # Cutoff is captured before fetching, not after processing - if it
+        # were set to "now" after the loop finishes, an email that arrives
+        # in the gap between fetching and saving would fall before that
+        # timestamp and never get picked up by a later poll.
+        poll_started_at = timezone.now()
+        state, is_new_state = EmailPollState.objects.get_or_create(pk=1)
+        if is_new_state or state.last_received_at is None:
+            # First run ever - establish the cutoff and stop. This is what
+            # stops a backlog of old unread mail (e.g. sitting in the inbox
+            # before this feature existed, or piled up during downtime)
+            # from being swept into tickets/replies on the next poll.
+            state.last_received_at = poll_started_at
+            state.save(update_fields=["last_received_at"])
+            self.stdout.write(
+                "First run — established poll cutoff, not processing any "
+                "existing unread backlog. Future polls only see new mail."
+            )
+            return
+
+        cutoff = state.last_received_at
+
         try:
             token = _get_token()
-            emails = _get_unread_messages(token, mailbox)
+            emails = _get_unread_messages(token, mailbox, since=cutoff)
         except Exception as e:
             logger.error("Failed to fetch emails: %s", e)
             self.stderr.write(f"Failed to fetch emails: {e}")
@@ -193,6 +227,9 @@ class Command(BaseCommand):
             except Exception as e:
                 logger.error("Error pinning reply to %s: %s", ticket_number, e)
                 errors += 1
+
+        state.last_received_at = poll_started_at
+        state.save(update_fields=["last_received_at"])
 
         self.stdout.write(
             f"Done — processed={processed} created={created} skipped={skipped} errors={errors}"
