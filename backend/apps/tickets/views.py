@@ -57,14 +57,23 @@ class TechDashboard(TechRequiredMixin, ListView):
         # queue inventory - exclude unconditionally, regardless of any status filter.
         qs = qs.exclude(merged_into__isnull=False)
         status = self.request.GET.get("status")
+        archived = self.request.GET.get("archived")
         company = self.request.GET.get("company")
         assignee = self.request.GET.get("assignee")
         priority = self.request.GET.get("priority")
         category = self.request.GET.get("category")
         q = self.request.GET.get("q")
 
-        if status:
+        archived_statuses = [Ticket.Status.RESOLVED, Ticket.Status.CLOSED]
+        if archived:
+            # Archive view - resolved/closed tickets only, regardless of status filter.
+            qs = qs.filter(status__in=archived_statuses)
+        elif status:
             qs = qs.filter(status=status)
+        else:
+            # Default queue is active work only - resolved/closed tickets live
+            # in the archive, not in "All Tickets" or "My Tickets".
+            qs = qs.exclude(status__in=archived_statuses)
         if company == "none":
             qs = qs.filter(company__isnull=True)
         elif company:

@@ -69,6 +69,14 @@
         No Company
       </a>
 
+      <a href="{% url 'tickets:tech_dashboard' %}?archived=1" @click="open = false"
+         class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+        </svg>
+        Archive
+      </a>
+
       <a href="{% url 'tickets:tech_reports' %}" @click="open = false"
          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
            {% if request.resolver_match.url_name == 'tech_reports' %}bg-blue-600 text-white{% else %}text-gray-300 hover:bg-gray-800 hover:text-white{% endif %}">
