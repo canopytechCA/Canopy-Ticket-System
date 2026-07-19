@@ -37,22 +37,28 @@ def _render(template: str, context: dict) -> str:
 
 # ── Client confirmation ───────────────────────────────────────────────────────
 
-def notify_ticket_confirmed(ticket) -> None:
+def notify_ticket_confirmed(ticket, to_email: str = "", to_name: str = "") -> None:
     """
     Send a confirmation to the client immediately after they submit a ticket.
+
+    Defaults to ticket.created_by's account. Pass to_email/to_name explicitly
+    for a submitter with no linked User account - e.g. an inbound email from
+    an address that didn't match any existing user.
     """
-    client = ticket.created_by
-    if not client or not client.email:
-        return
+    if not to_email:
+        client = ticket.created_by
+        if not client or not client.email:
+            return
+        to_email, to_name = client.email, client.get_full_name()
     context = {
         "ticket": ticket,
         "ticket_url": _portal_url(ticket),
-        "recipient_name": client.get_full_name(),
+        "recipient_name": to_name,
         "recipient_is_client": True,
     }
     send_email(
-        client.email,
-        client.get_full_name(),
+        to_email,
+        to_name,
         f"[{ticket.ticket_number}] We received your request: {ticket.subject}",
         _render("ticket_confirmed.html", context),
     )

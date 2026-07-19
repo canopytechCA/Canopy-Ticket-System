@@ -14,6 +14,10 @@ How it works:
          human to set later.
        - the sender is skipped entirely if it's the support mailbox
          itself, to avoid looping on our own notifications.
+       - the sender gets a "we received your request" confirmation
+         email, same as tickets submitted through the client portal -
+         sent to the raw sender address, whether or not it matches an
+         existing User account.
   5. Marks the email as read so it isn't processed again either way.
 
 Requires:
@@ -39,7 +43,7 @@ from apps.accounts.email_service import _get_token
 from apps.accounts.models import AuditLog, User
 from apps.companies.models import Company
 from apps.tickets.models import Message, Ticket
-from apps.tickets.notifications import notify_ticket_created
+from apps.tickets.notifications import notify_ticket_confirmed, notify_ticket_created
 
 logger = logging.getLogger(__name__)
 
@@ -236,6 +240,7 @@ class Command(BaseCommand):
                 is_internal=False,
             )
             notify_ticket_created(ticket)
+            notify_ticket_confirmed(ticket, to_email=sender_email, to_name=sender_name or sender_email)
             AuditLog.objects.create(
                 actor=None,
                 action=AuditLog.Action.EMAIL_TICKET_CREATE,
