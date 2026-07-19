@@ -48,6 +48,7 @@ def notify_ticket_confirmed(ticket) -> None:
         "ticket": ticket,
         "ticket_url": _portal_url(ticket),
         "recipient_name": client.get_full_name(),
+        "recipient_is_client": True,
     }
     send_email(
         client.email,
@@ -68,6 +69,7 @@ def notify_ticket_created(ticket) -> None:
     context = {
         "ticket": ticket,
         "ticket_url": _tech_url(ticket),
+        "recipient_is_client": False,
     }
 
     if ticket.assigned_to and ticket.assigned_to.email:
@@ -110,6 +112,7 @@ def notify_new_reply(message) -> None:
             "ticket_url": _portal_url(ticket),
             "recipient_name": client.get_full_name(),
             "replied_by": "Canopy Support",
+            "recipient_is_client": True,
         }
         send_email(
             client.email,
@@ -132,6 +135,7 @@ def notify_new_reply(message) -> None:
             "ticket_url": _tech_url(ticket),
             "recipient_name": to_name,
             "replied_by": client_name,
+            "recipient_is_client": False,
         }
         send_email(
             to_email,
@@ -152,6 +156,7 @@ def notify_ticket_assigned(ticket) -> None:
         "ticket": ticket,
         "ticket_url": _tech_url(ticket),
         "recipient_name": tech.get_full_name(),
+        "recipient_is_client": False,
     }
     send_email(
         tech.email,
@@ -186,6 +191,7 @@ def notify_status_changed(ticket, old_status: str) -> None:
         "recipient_name": client.get_full_name(),
         "old_status_label": status_labels.get(old_status, old_status),
         "new_status_label": status_labels.get(ticket.status, ticket.status),
+        "recipient_is_client": True,
     }
     send_email(
         client.email,

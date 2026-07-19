@@ -37,7 +37,11 @@
           <td style="background-color:#f9fafb;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 8px 8px;padding:20px 32px;">
             <p style="margin:0;color:#6b7280;font-size:12px;line-height:1.5;">
               This email was sent by Canopy Tickets on behalf of Canopytech Resources Ltd.<br>
+              {% if recipient_is_client %}
+              Reply directly to this email to add to your ticket, or use the client portal.
+              {% else %}
               Please do not reply directly to this email — use the portal to respond.
+              {% endif %}
             </p>
           </td>
         </tr>
