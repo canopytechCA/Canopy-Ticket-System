@@ -37,7 +37,12 @@
   </div>
 
   <!-- Filter bar -->
-  <form method="get" class="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end" x-data="{ filtersOpen: false }">
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('filterBar', () => ({ filtersOpen: false }));
+    });
+  </script>
+  <form method="get" class="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex flex-wrap gap-3 items-end" x-data="filterBar">
     <button type="button" @click="filtersOpen = !filtersOpen"
             class="md:hidden flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 w-full justify-between">
       <span>Filters</span>
@@ -112,7 +117,7 @@
 
       <form method="post"
             action="{% url 'tickets:tech_bulk_action' %}"
-            @submit="if (action === 'delete') { $el.action = '{% url "tickets:tech_bulk_delete_confirm" %}'; }"
+            @submit="submitBulkAction($el)"
             class="flex flex-wrap items-center gap-2 flex-1">
         {% csrf_token %}
         <template x-for="id in selected" :key="id">
@@ -172,7 +177,7 @@
         </button>
       </form>
 
-      <button type="button" @click="selected = []; allChecked = false"
+      <button type="button" @click="clearSelection()"
               class="text-sm text-blue-600 hover:text-blue-800 font-medium">
         Clear selection
       </button>
@@ -258,8 +263,8 @@
 </div>
 
 <script>
-function bulkActions(pageIds) {
-  return {
+document.addEventListener('alpine:init', () => {
+  Alpine.data('bulkActions', (pageIds) => ({
     selected: [],
     allChecked: false,
     action: '',
@@ -276,7 +281,16 @@ function bulkActions(pageIds) {
       this.allChecked = checked;
     },
     isSelected(id) { return this.selected.includes(id); },
-  };
-}
+    clearSelection() {
+      this.selected = [];
+      this.allChecked = false;
+    },
+    submitBulkAction(el) {
+      if (this.action === 'delete') {
+        el.action = '{% url "tickets:tech_bulk_delete_confirm" %}';
+      }
+    },
+  }));
+});
 </script>
 {% endblock %}

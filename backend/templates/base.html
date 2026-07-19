@@ -6,12 +6,57 @@
   <title>{% block title %}Canopy Tickets{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@2.0.3" integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://unpkg.com/@alpinejs/csp@3.x.x/dist/cdn.min.js" defer></script>
   <style>
     [x-cloak] { display: none !important; }
     .htmx-indicator { display: none; }
     .htmx-request .htmx-indicator { display: inline; }
   </style>
+  <script>
+    // Alpine components are registered here (not as inline x-data object
+    // literals) because the CSP-safe Alpine build has no eval-based
+    // expression evaluator - every x-data must reference a pre-registered
+    // named component. Registration works regardless of where this script
+    // sits in the document: it's a plain (non-deferred) inline script, so
+    // it always runs during HTML parsing, before Alpine's own deferred
+    // script executes and fires alpine:init.
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('toast', () => ({
+        show: true,
+        init() {
+          setTimeout(() => { this.show = false }, 4000);
+        },
+      }));
+    });
+
+    // htmx's hx-on attribute also requires unsafe-eval (it's unrelated to
+    // Alpine), so form-reset-after-submit is handled here via a real
+    // delegated listener instead. Mark a form with .js-reset-on-success to
+    // reset it after a successful hx-post/hx-put/etc. Uses afterRequest,
+    // not afterSettle: for a form whose hx-target is a *different* element
+    // (e.g. hx-swap="beforeend" into a message thread elsewhere on the
+    // page), afterSettle's evt.detail.elt is the newly-settled content
+    // inside that target, not the form - afterRequest's evt.detail.elt is
+    // reliably the element that made the request, regardless of target.
+    // Deferred to DOMContentLoaded because this script tag runs while
+    // still parsing <head> - document.body doesn't exist yet at this
+    // point. (The alpine:init listener above doesn't have this problem;
+    // it only touches `document` itself, not `document.body`.)
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.addEventListener('htmx:afterRequest', function (evt) {
+        if (evt.detail.successful && evt.detail.elt.matches('.js-reset-on-success')) {
+          evt.detail.elt.reset();
+        }
+      });
+
+      // Belt-and-suspenders: explicitly disable htmx's own eval-dependent
+      // features (hx-on, trigger filters, js:-prefixed hx-vals/hx-headers).
+      // Nothing in this app uses them after the above, but this makes that
+      // a hard failure instead of a silent CSP violation if one ever
+      // creeps back in.
+      htmx.config.allowEval = false;
+    });
+  </script>
   {% block extra_head %}{% endblock %}
 </head>
 <body class="h-full" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -19,7 +64,7 @@
 {% if messages %}
 <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2">
   {% for message in messages %}
-  <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 4000)"
+  <div x-data="toast" x-show="show"
        x-transition:leave="transition ease-in duration-300"
        x-transition:leave-start="opacity-100 translate-x-0"
        x-transition:leave-end="opacity-0 translate-x-4"
