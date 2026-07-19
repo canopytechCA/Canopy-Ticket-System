@@ -24,6 +24,15 @@
         {% endfor %}
       </select>
     </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+      <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500">
+        <option value="">Active &amp; Blocked</option>
+        {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Filter</button>
     <a href="{% url 'tickets:tech_user_list' %}" class="px-4 py-2 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100">Clear</a>
   </form>
@@ -62,10 +71,12 @@
           </td>
           <td class="px-4 py-3 text-sm text-gray-600">{{ u.company.name|default:"—" }}</td>
           <td class="px-4 py-3">
-            {% if u.is_active %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>
+            {% if u.status == 'BLOCKED' %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">Blocked</span>
+            {% elif u.status == 'ARCHIVED' %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">Archived</span>
             {% else %}
-            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">Inactive</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>
             {% endif %}
           </td>
           <td class="px-4 py-3 text-sm text-gray-500">{{ u.date_joined|date:"M j, Y" }}</td>

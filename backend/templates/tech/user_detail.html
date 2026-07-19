@@ -16,8 +16,12 @@
       <h1 class="text-xl font-bold text-gray-900">{{ edit_user.get_full_name }}</h1>
       <p class="text-sm text-gray-500">{{ edit_user.email }}</p>
     </div>
-    {% if not edit_user.is_active %}
-    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">Inactive</span>
+    {% if edit_user.status == 'BLOCKED' %}
+    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">Blocked</span>
+    {% elif edit_user.status == 'ARCHIVED' %}
+    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">Archived</span>
+    {% else %}
+    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>
     {% endif %}
   </div>
 
@@ -53,11 +57,6 @@
             {{ form.company }}
           </div>
         </div>
-        <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-          {{ form.is_active }}
-          <label class="text-sm text-gray-700">Active</label>
-        </div>
-
         {% if form.errors %}
         <div class="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 space-y-1">
           {% for field in form %}{% for error in field.errors %}<p><strong>{{ field.label }}:</strong> {{ error }}</p>{% endfor %}{% endfor %}
@@ -120,5 +119,60 @@
     </div>
 
   </div>
+
+  {% if request.user.is_superuser and edit_user != request.user %}
+  <div class="mt-6 bg-white rounded-xl border border-gray-200 p-5">
+    <h2 class="text-sm font-semibold text-gray-700 mb-1">Account Access</h2>
+    <p class="text-xs text-gray-500 mb-4">
+      Super-user only. Blocking prevents sign-in immediately; archiving additionally
+      schedules permanent deletion one year out.
+    </p>
+
+    {% if edit_user.status == 'BLOCKED' %}
+    <p class="text-sm text-red-700 mb-3">
+      Blocked from signing in since {{ edit_user.blocked_at|date:"M j, Y" }}. Email/password sign-in
+      shows a generic error, same as a wrong password — it won't say the account is blocked.
+      Microsoft 365 sign-in tells them to call support at {{ support_phone }}, since that path already
+      confirms their identity via Microsoft.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="unblock">
+      <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700">
+        Unblock
+      </button>
+    </form>
+
+    {% elif edit_user.status == 'ARCHIVED' %}
+    <p class="text-sm text-gray-700 mb-3">
+      Archived on {{ edit_user.archived_at|date:"M j, Y" }}. Their data will be permanently deleted on
+      <strong>{{ edit_user.purge_at|date:"M j, Y" }}</strong> unless restored before then.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="restore">
+      <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700">
+        Restore
+      </button>
+    </form>
+
+    {% else %}
+    <div class="flex gap-3">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="block">
+        <button type="submit" class="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700">
+          Block Sign-In
+        </button>
+      </form>
+      <a href="{% url 'tickets:tech_user_archive' edit_user.pk %}"
+         class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">
+        Archive User
+      </a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}

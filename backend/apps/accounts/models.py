@@ -1,5 +1,11 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from django.utils import timezone
+
+SUPPORT_PHONE = "647-478-8449"
+ARCHIVE_RETENTION_DAYS = 365
 
 
 class UserManager(BaseUserManager):
@@ -24,6 +30,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         TECH = "TECH", "Technician"
         CLIENT = "CLIENT", "Client"
 
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        BLOCKED = "BLOCKED", "Blocked"
+        ARCHIVED = "ARCHIVED", "Archived"
+
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
@@ -38,6 +49,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    blocked_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    purge_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When an archived user's account is permanently deleted.",
+    )
 
     objects = UserManager()
 
@@ -63,6 +82,47 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_client(self):
         return self.role == self.Role.CLIENT
 
+    @property
+    def is_blocked(self):
+        return self.status == self.Status.BLOCKED
+
+    @property
+    def is_archived(self):
+        return self.status == self.Status.ARCHIVED
+
+    def block(self):
+        """Prevent sign-in. Reversible via unblock()."""
+        self.status = self.Status.BLOCKED
+        self.is_active = False
+        self.blocked_at = timezone.now()
+        self.archived_at = None
+        self.purge_at = None
+        self.save(update_fields=["status", "is_active", "blocked_at", "archived_at", "purge_at"])
+
+    def unblock(self):
+        self.status = self.Status.ACTIVE
+        self.is_active = True
+        self.blocked_at = None
+        self.save(update_fields=["status", "is_active", "blocked_at"])
+
+    def archive(self):
+        """Soft-remove the user. Their data stays put; the account itself is
+        hard-deleted once purge_at passes (see purge_archived_users command)."""
+        now = timezone.now()
+        self.status = self.Status.ARCHIVED
+        self.is_active = False
+        self.archived_at = now
+        self.purge_at = now + timedelta(days=ARCHIVE_RETENTION_DAYS)
+        self.blocked_at = None
+        self.save(update_fields=["status", "is_active", "archived_at", "purge_at", "blocked_at"])
+
+    def restore(self):
+        self.status = self.Status.ACTIVE
+        self.is_active = True
+        self.archived_at = None
+        self.purge_at = None
+        self.save(update_fields=["status", "is_active", "archived_at", "purge_at"])
+
 
 class AuditLog(models.Model):
     class Action(models.TextChoices):
@@ -78,6 +138,11 @@ class AuditLog(models.Model):
         USER_CREATE = "USER_CREATE", "User Created"
         USER_UPDATE = "USER_UPDATE", "User Updated"
         USER_DEACTIVATE = "USER_DEACTIVATE", "User Deactivated"
+        USER_BLOCK = "USER_BLOCK", "User Blocked"
+        USER_UNBLOCK = "USER_UNBLOCK", "User Unblocked"
+        USER_ARCHIVE = "USER_ARCHIVE", "User Archived"
+        USER_RESTORE = "USER_RESTORE", "User Restored"
+        USER_PURGE = "USER_PURGE", "User Permanently Deleted"
         COMPANY_CREATE = "COMPANY_CREATE", "Company Created"
         COMPANY_UPDATE = "COMPANY_UPDATE", "Company Updated"
         API_TICKET_CREATE = "API_TICKET_CREATE", "Ticket Created via API"

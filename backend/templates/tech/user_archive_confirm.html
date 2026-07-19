@@ -1,0 +1,53 @@
+{% extends "tech/base_tech.html" %}
+
+{% block title %}Archive {{ edit_user.get_full_name }} — Canopy Tickets{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-2xl mx-auto">
+
+  <a href="{% url 'tickets:tech_user_detail' edit_user.pk %}" class="text-sm text-blue-600 hover:underline">&larr; Back to user</a>
+
+  <h1 class="text-xl font-bold text-gray-900 mt-2 mb-6">Archive User</h1>
+
+  <div class="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+    <p class="text-sm text-gray-500 mb-1">User</p>
+    <p class="text-base font-medium text-gray-900 mb-4">
+      {{ edit_user.get_full_name }} <span class="text-gray-500">({{ edit_user.email }})</span>
+    </p>
+    <dl class="grid grid-cols-2 gap-y-2 text-sm">
+      <dt class="text-gray-500">Role</dt>
+      <dd class="text-gray-900">{{ edit_user.get_role_display }}</dd>
+      <dt class="text-gray-500">Company</dt>
+      <dd class="text-gray-900">{{ edit_user.company.name|default:"—" }}</dd>
+      <dt class="text-gray-500">Joined</dt>
+      <dd class="text-gray-900">{{ edit_user.date_joined|date:"M j, Y" }}</dd>
+    </dl>
+  </div>
+
+  <div class="bg-amber-50 border border-amber-200 rounded-xl p-5">
+    <p class="text-sm font-semibold text-amber-800 mb-1">What happens when you archive this user</p>
+    <ul class="list-disc list-inside text-sm text-amber-700 space-y-1 mb-4">
+      <li>They're immediately blocked from signing in.</li>
+      <li>All of their tickets, messages, and time entries are kept exactly as-is.</li>
+      <li>The account can be restored at any point before the purge date below.</li>
+      <li>
+        If not restored, the account is <strong>permanently deleted</strong> on
+        {{ purge_date|date:"F j, Y" }} — this cannot be undone.
+      </li>
+    </ul>
+    <form method="post">
+      {% csrf_token %}
+      <div class="flex gap-3">
+        <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">
+          Archive User
+        </button>
+        <a href="{% url 'tickets:tech_user_detail' edit_user.pk %}"
+           class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

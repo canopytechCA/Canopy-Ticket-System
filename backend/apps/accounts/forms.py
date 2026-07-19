@@ -8,6 +8,12 @@ SELECT_CLASS = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 
 
 
 class LoginForm(AuthenticationForm):
+    """Blocked and archived users both have is_active=False, so the base
+    AuthenticationForm/ModelBackend already rejects them with the same
+    generic "incorrect email or password" error used for a wrong password —
+    intentionally not distinguishing a blocked account from one that's
+    simply not there, or a bad guess."""
+
     username = forms.EmailField(
         widget=forms.EmailInput(attrs={
             "class": "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent",
@@ -73,7 +79,7 @@ class UserCreateForm(forms.ModelForm):
 class UserEditForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "email", "role", "company", "is_active"]
+        fields = ["first_name", "last_name", "email", "role", "company"]
         widgets = {
             "first_name": forms.TextInput(attrs={"class": INPUT_CLASS}),
             "last_name": forms.TextInput(attrs={"class": INPUT_CLASS}),

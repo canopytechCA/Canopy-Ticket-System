@@ -33,5 +33,6 @@ urlpatterns = [
     path("tech/users/", account_views.TechUserList.as_view(), name="tech_user_list"),
     path("tech/users/new/", account_views.TechUserCreate.as_view(), name="tech_user_create"),
     path("tech/users/<int:pk>/", account_views.TechUserDetail.as_view(), name="tech_user_detail"),
+    path("tech/users/<int:pk>/archive/", account_views.TechUserArchive.as_view(), name="tech_user_archive"),
     path("tech/audit/", account_views.TechAuditLog.as_view(), name="tech_audit_log"),
 ]

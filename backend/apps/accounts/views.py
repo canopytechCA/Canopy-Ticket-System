@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from django.contrib import messages as django_messages
 from django.contrib.auth import login as auth_login
@@ -7,8 +8,10 @@ from django.contrib.auth import views as auth_views, update_session_auth_hash
 logger = logging.getLogger(__name__)
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
@@ -20,7 +23,7 @@ from .forms import (
     AdminPasswordForm, LoginForm, ProfileForm,
     SelfPasswordChangeForm, UserCreateForm, UserEditForm,
 )
-from .models import AuditLog, User, log_action
+from .models import ARCHIVE_RETENTION_DAYS, SUPPORT_PHONE, AuditLog, User, log_action
 
 
 class LoginView(auth_views.LoginView):
@@ -56,9 +59,15 @@ class TechUserList(TechRequiredMixin, View):
         role = request.GET.get("role")
         if role:
             qs = qs.filter(role=role)
+        status = request.GET.get("status")
+        if status:
+            qs = qs.filter(status=status)
+        else:
+            qs = qs.exclude(status=User.Status.ARCHIVED)
         return render(request, self.template_name, {
             "users": qs,
             "role_choices": User.Role.choices,
+            "status_choices": User.Status.choices,
             "filters": request.GET,
         })
 
@@ -92,6 +101,7 @@ class TechUserDetail(TechRequiredMixin, View):
             "edit_user": edit_user,
             "form": UserEditForm(instance=edit_user),
             "password_form": AdminPasswordForm(),
+            "support_phone": SUPPORT_PHONE,
         })
 
     def post(self, request, pk):
@@ -101,13 +111,8 @@ class TechUserDetail(TechRequiredMixin, View):
         if action == "edit":
             form = UserEditForm(request.POST, instance=edit_user)
             if form.is_valid():
-                was_active = edit_user.is_active
                 form.save()
-                edit_user.refresh_from_db()
-                action_type = (AuditLog.Action.USER_DEACTIVATE
-                               if was_active and not edit_user.is_active
-                               else AuditLog.Action.USER_UPDATE)
-                log_action(request, action_type, target=edit_user.email)
+                log_action(request, AuditLog.Action.USER_UPDATE, target=edit_user.email)
                 django_messages.success(request, "User updated.")
                 return redirect("tickets:tech_user_detail", pk=pk)
             return render(request, self.template_name, {
@@ -131,6 +136,65 @@ class TechUserDetail(TechRequiredMixin, View):
                 "password_form": password_form,
             })
 
+        if action in ("block", "unblock", "restore"):
+            if not request.user.is_superuser:
+                raise PermissionDenied
+            if edit_user == request.user:
+                django_messages.error(request, "You can't block or archive your own account.")
+                return redirect("tickets:tech_user_detail", pk=pk)
+
+            if action == "block":
+                edit_user.block()
+                log_action(request, AuditLog.Action.USER_BLOCK, target=edit_user.email)
+                django_messages.success(
+                    request, f"{edit_user.get_full_name()} is now blocked from signing in."
+                )
+            elif action == "unblock":
+                edit_user.unblock()
+                log_action(request, AuditLog.Action.USER_UNBLOCK, target=edit_user.email)
+                django_messages.success(request, f"{edit_user.get_full_name()} can sign in again.")
+            elif action == "restore":
+                edit_user.restore()
+                log_action(request, AuditLog.Action.USER_RESTORE, target=edit_user.email)
+                django_messages.success(request, f"{edit_user.get_full_name()} restored to active.")
+            return redirect("tickets:tech_user_detail", pk=pk)
+
+        return redirect("tickets:tech_user_detail", pk=pk)
+
+
+class TechUserArchive(TechRequiredMixin, View):
+    """Archive a user: super-user only, confirmed via a dedicated page since
+    it starts the clock on a permanent, irreversible deletion."""
+    template_name = "tech/user_archive_confirm.html"
+
+    def _get_user(self, pk):
+        return get_object_or_404(User.objects.select_related("company"), pk=pk)
+
+    def get(self, request, pk):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        edit_user = self._get_user(pk)
+        purge_date = timezone.now() + timedelta(days=ARCHIVE_RETENTION_DAYS)
+        return render(request, self.template_name, {"edit_user": edit_user, "purge_date": purge_date})
+
+    def post(self, request, pk):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        edit_user = self._get_user(pk)
+        if edit_user == request.user:
+            django_messages.error(request, "You can't block or archive your own account.")
+            return redirect("tickets:tech_user_detail", pk=pk)
+
+        edit_user.archive()
+        log_action(
+            request, AuditLog.Action.USER_ARCHIVE, target=edit_user.email,
+            detail=f"scheduled purge {edit_user.purge_at:%Y-%m-%d}",
+        )
+        django_messages.success(
+            request,
+            f"{edit_user.get_full_name()} archived. Their data will be permanently removed on "
+            f"{edit_user.purge_at.strftime('%B %d, %Y')}.",
+        )
         return redirect("tickets:tech_user_detail", pk=pk)
 
 
@@ -342,8 +406,24 @@ class MicrosoftCallbackView(View):
         email = info["email"]
 
         try:
-            user = User.objects.get(email__iexact=email, is_active=True)
+            existing_user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
+            existing_user = None
+
+        if existing_user is not None:
+            if existing_user.status == User.Status.BLOCKED:
+                django_messages.error(
+                    request,
+                    f"This account has been blocked. Please call our support line at {SUPPORT_PHONE}.",
+                )
+                return redirect("accounts:login")
+            if not existing_user.is_active:
+                django_messages.error(
+                    request, f"No active account found for {email}. Contact your administrator."
+                )
+                return redirect("accounts:login")
+            user = existing_user
+        else:
             user = _auto_create_from_domain(request, email, info)
             if user is None:
                 return redirect("accounts:login")
