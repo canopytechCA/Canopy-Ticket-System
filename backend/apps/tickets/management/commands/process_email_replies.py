@@ -9,6 +9,13 @@ old unread mail. The very first time this command ever runs, it just
 records "now" as the cutoff and processes nothing; every run after that
 only looks at mail received since the last run.
 
+Launch gate: nothing is processed before _LAUNCH_AT (Aug 3, 2026 12:01am
+Eastern) regardless of the above - remove this block once that date has
+passed and it's no longer needed. This also clamps the stored cutoff up to
+_LAUNCH_AT the first time it runs after that instant, so the backlog that
+piled up before launch (including while Graph mailbox permissions were
+missing) is never swept in as a wave of tickets.
+
 How it works:
   1. Fetches unread emails received since the last poll from SUPPORT_EMAIL
      mailbox via Microsoft Graph.
@@ -39,14 +46,17 @@ Runs automatically via the email-inbound Docker service (every 5 minutes).
 
 import logging
 import re
+from datetime import datetime
 from html.parser import HTMLParser
+from zoneinfo import ZoneInfo
 
 import httpx
 from django.conf import settings
+from django.core.cache import cache
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from apps.accounts.email_service import _get_token
+from apps.accounts.email_service import _TOKEN_CACHE_KEY, _get_token
 from apps.accounts.models import AuditLog, User
 from apps.companies.models import Company
 from apps.tickets.models import EmailPollState, Message, Ticket
@@ -57,6 +67,13 @@ logger = logging.getLogger(__name__)
 _TICKET_RE = re.compile(r'\[T-(\d{4}-\d{5,6})\]', re.IGNORECASE)
 _GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 _DEFAULT_ASSIGNEE_EMAIL = "marc.gullo@canopytech.ca"
+
+# Launch gate: this app goes live Aug 3, 2026 12:01am Eastern. Nothing —
+# not a single email, not the pre-existing unread backlog that piled up
+# while Graph mailbox permissions were missing — should become a ticket
+# before that instant. zoneinfo resolves this to the correct UTC offset
+# for the date (EDT, UTC-4, since Eastern DST is in effect in August).
+_LAUNCH_AT = datetime(2026, 8, 3, 0, 1, tzinfo=ZoneInfo("America/Toronto"))
 
 
 class _HTMLStripper(HTMLParser):
@@ -152,17 +169,26 @@ class Command(BaseCommand):
         # in the gap between fetching and saving would fall before that
         # timestamp and never get picked up by a later poll.
         poll_started_at = timezone.now()
+
+        if poll_started_at < _LAUNCH_AT:
+            self.stdout.write(
+                f"Before launch ({_LAUNCH_AT.isoformat()}) — not processing any mail yet."
+            )
+            return
+
         state, is_new_state = EmailPollState.objects.get_or_create(pk=1)
-        if is_new_state or state.last_received_at is None:
-            # First run ever - establish the cutoff and stop. This is what
-            # stops a backlog of old unread mail (e.g. sitting in the inbox
-            # before this feature existed, or piled up during downtime)
-            # from being swept into tickets/replies on the next poll.
-            state.last_received_at = poll_started_at
+        if is_new_state or state.last_received_at is None or state.last_received_at < _LAUNCH_AT:
+            # Either genuinely the first run ever, or the stored cutoff
+            # predates launch (e.g. it was set back when the mailbox
+            # permission was still broken/missing) - clamp to the launch
+            # instant rather than "now", so the backlog that piled up before
+            # launch is never swept in as tickets on the next poll.
+            state.last_received_at = _LAUNCH_AT
             state.save(update_fields=["last_received_at"])
             self.stdout.write(
-                "First run — established poll cutoff, not processing any "
-                "existing unread backlog. Future polls only see new mail."
+                "Cutoff established at launch time — not processing any "
+                "pre-launch backlog. Future polls only see mail received "
+                "after launch."
             )
             return
 
@@ -171,6 +197,14 @@ class Command(BaseCommand):
         try:
             token = _get_token()
             emails = _get_unread_messages(token, mailbox, since=cutoff)
+        except httpx.HTTPStatusError as e:
+            # A stale/bad cached token would otherwise keep getting reused
+            # for up to 55 minutes (11 polls) before naturally expiring.
+            if e.response.status_code in (401, 403):
+                cache.delete(_TOKEN_CACHE_KEY)
+            logger.error("Failed to fetch emails: %s", e)
+            self.stderr.write(f"Failed to fetch emails: {e}")
+            return
         except Exception as e:
             logger.error("Failed to fetch emails: %s", e)
             self.stderr.write(f"Failed to fetch emails: {e}")
